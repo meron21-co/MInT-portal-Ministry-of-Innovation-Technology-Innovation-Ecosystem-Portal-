@@ -68,6 +68,7 @@ router.put(
 
      res.json({
   message: "Profile updated successfully",
+    profile: user.profile,
   user,
 });
 

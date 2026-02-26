@@ -1,5 +1,13 @@
+body {
+  font-family: 'Inter', sans-serif;
+}
+/* Titles */
+h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+}
+
 /* src/components/HomePage.css */
-/* Reset main container spacing */
+
 .home-container {
   margin: 0;
   padding: 0;
@@ -205,7 +213,7 @@ li{
 text-align: left;
 }
 .card-button {
-  width: 80%;
+  width: 100%;
   padding: 12px 24px;
   margin-top: 15px;
   border: none;
@@ -387,8 +395,9 @@ text-align: left;
   background: #10922a;
   color: #9b8d8d;
   font-size: 1.5em;
-  padding: 8px 19px;
+  padding: 4px 15px;
   border-radius: 8px;
+  
 }
 /* Hover effects */
 .dollar-icon:hover {
@@ -407,8 +416,8 @@ text-align: left;
 .admin-icon {
   background: #0d5ed8;
   color: #9b8d8d;
-  font-size: 1.2em;
-  padding: 8px 19px;
+  font-size: 1.3em;
+  padding: 5px 9px;
   border-radius: 8px;
 }
 /* Hover effects */

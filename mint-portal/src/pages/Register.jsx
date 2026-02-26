@@ -45,15 +45,28 @@ const handleChange = (e) => {
   // Step validation
   const validateStep = () => {
     const newErrors = {};
-    if (step === 1) {
-      if (!formData.name.trim()) newErrors.name = "Full name is required";
-      if (!formData.email.trim()) newErrors.email = "Email is required";
-      else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email format";
-      if (!formData.password) newErrors.password = "Password is required";
-      else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
-      if (formData.confirmPassword !== formData.password) newErrors.confirmPassword = "Passwords must match";
-      if (!role) newErrors.role = "Please select a role";
-    } else if (step === 2) {
+   if (step === 1) {
+  if (!formData.name.trim()) newErrors.name = "Full name is required";
+  if (!formData.email.trim()) newErrors.email = "Email is required";
+  else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email format";
+
+  if (!formData.password) {
+    newErrors.password = "Password is required";
+  } else {
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?#&])[A-Za-z\d@$!%*?#&]{8,}$/;
+    if (!strongPasswordRegex.test(formData.password)) {
+      newErrors.password =
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character";
+    }
+  }
+
+  if (formData.confirmPassword !== formData.password)
+    newErrors.confirmPassword = "Passwords must match";
+
+  if (!role) newErrors.role = "Please select a role";
+}
+    
+    else if (step === 2) {
       if (role === "inventor") {
         if (!formData.project.trim()) newErrors.project = "Project summary is required";
         if (!formData.skills.trim()) newErrors.skills = "Skills are required";

@@ -9,7 +9,7 @@ const Navbar = () => {
   const [settingsOpen, setSettingsOpen] = useState(false); // Settings panel toggle
   const { user, setUser, logout } = useContext(AuthContext);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
-
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
   }, [theme]);
@@ -53,53 +53,46 @@ const saveSettingsAndClose = () => {
   //   updateProfileImage(formData);
   // };
 
- const handleProfileUpload = async (e) => {
+const handleProfileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // 1️⃣ Instant preview
+  const previewURL = URL.createObjectURL(file);
+  setUser(prev => ({ ...prev, profile: previewURL }));
+
   try {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // preview image
-    const previewURL = URL.createObjectURL(file);
-
-    setUser(prev => ({
-      ...prev,
-      profile: previewURL,
-    }));
-
+    // 2️⃣ Upload
     const formData = new FormData();
     formData.append("image", file);
 
-    const res = await fetch(
-      "http://localhost:5000/api/users/profile-image",
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      }
-    );
+    const res = await fetch(`${API_URL}/api/users/profile-image`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      body: formData,
+    });
 
     const data = await res.json();
 
-    if (res.ok) {
-      setUser(prev => ({
-        ...prev,
-        profile: "http://localhost:5000" + data.profile + "?t=" + Date.now()
-      }));
-
-      // cleanup preview memory
-      URL.revokeObjectURL(previewURL);
-    } else {
+    if (!res.ok) {
       alert(data.message || "Upload failed");
+      return;
     }
+
+    // 3️⃣ Update profile with server URL
+    setUser(prev => ({
+      ...prev,
+      profile: `${API_URL}${data.profile}?t=${Date.now()}`, // force reload
+    }));
 
   } catch (err) {
     console.error(err);
     alert("Image upload error");
+  } finally {
+    // 4️⃣ cleanup
+    URL.revokeObjectURL(previewURL);
   }
 };
-
 
   const handleNameChange = (newName) => setUser(prev => ({ ...prev, name: newName }));
   const handleEmailChange = (newEmail) => setUser(prev => ({ ...prev, email: newEmail }));
@@ -165,16 +158,18 @@ const saveSettingsAndClose = () => {
             <li className="nav-item profile-container">
               {/* Minimal Profile Box */}
               <div className="profile-box">
+
                <img
-  src={
+   src={
     user.profile
-      ? user.profile.startsWith("blob:")
+      ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
         ? user.profile
-        : "http://localhost:5000" + user.profile + "?t=" + Date.now()
+        : `${API_URL}${user.profile}?t=${Date.now()}`
       : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
   }
   alt="Profile"
   className="profile-img"
+  onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
 />
                 <div className="profile-text">
                   <span className="profile-name">{getDisplayName()}</span>
@@ -193,16 +188,19 @@ const saveSettingsAndClose = () => {
     <div className="settings-profile">
       <div className="profile-img-box">
         <img
-  src={
+  
+   src={
     user.profile
-      ? user.profile.startsWith("blob:")
+      ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
         ? user.profile
-        : "http://localhost:5000" + user.profile + "?t=" + Date.now()
+        : `${API_URL}${user.profile}?t=${Date.now()}`
       : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
   }
   alt="Profile"
   className="profile-img-preview"
+    onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
 />
+
         <label htmlFor="profile-upload" className="profile-upload-btn">
           Change Photo
         </label>
