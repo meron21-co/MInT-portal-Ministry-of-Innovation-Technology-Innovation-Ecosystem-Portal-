@@ -137,6 +137,9 @@ const handleProfileUpload = async (e) => {
           <HashLink smooth to="/#footer" className="nav-links" onClick={() => setMenuOpen(false)}>Contact</HashLink>
         </li>
 
+
+
+
         {/* Login/Register or Settings */}
         {!user ? (
           <>

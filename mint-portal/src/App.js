@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/Dashboard/AdminDashboard";
 import Login from "./pages/login";
 import Register from "./pages/Register";
 import { AuthContext, AuthProvider } from "./pages/AuthContext";
+import PaymentSuccess from "./pages/Dashboard/PaymentSuccess";
 
 // ---------- Protected Route Component ----------
 function ProtectedRoute({ children, role }) {
@@ -65,6 +66,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
           </Routes>
           <Footer />
         </div>

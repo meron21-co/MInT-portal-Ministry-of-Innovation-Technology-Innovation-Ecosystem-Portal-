@@ -9,6 +9,12 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/userRoutes.js";
+
+import paymentRoutes from "./routes/payment.js";
+
+
+
+
 // Config
 dotenv.config();
 const app = express();
@@ -25,10 +31,13 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/uploads", express.static("uploads"));
+
 // API Routes
+
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/payments", paymentRoutes); // must come after express.json()
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI, {

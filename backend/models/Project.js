@@ -24,7 +24,7 @@ const ProjectSchema = new mongoose.Schema({
   category: { type: String, default: "Other" },
   images: [{ type: String }],
   videos: [{ type: String }],
-
+raised: { type: Number, default: 0 },
   // ✅ Status + rejection reason
   status: { type: String, default: "Pending" },
   rejectionReason: { type: String, default: null },

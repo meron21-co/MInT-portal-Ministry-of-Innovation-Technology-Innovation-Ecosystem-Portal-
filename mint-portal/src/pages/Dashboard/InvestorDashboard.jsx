@@ -1,19 +1,185 @@
 import React, { useState, useEffect } from "react";
-import { FaStar, FaRegStar, FaDollarSign, FaTimes } from "react-icons/fa";
+import { 
+  FaStar, 
+  FaRegStar, 
+  FaDollarSign, 
+  FaTimes, 
+  FaShoppingCart, 
+  FaTrashAlt, 
+  FaInfoCircle, 
+  FaWallet 
+} from "react-icons/fa";
 import "./Dashboard.css";
+import Swal from "sweetalert2";
+
 
 function InvestorDashboard() {
+    const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-ET', {
+      style: 'currency',
+      currency: 'ETB',
+      minimumFractionDigits: 2
+    }).format(amount || 0);
+  };
   const [projects, setProjects] = useState([]);
+ const [cart, setCart] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [supportAmounts, setSupportAmounts] = useState({});
-  const [totalSupport, setTotalSupport] = useState({});
+  const [TotalSupport, setTotalSupport] = useState({});
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
 
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
 const userId = user?._id;
+
+
+// 1. Define the fetch function near the top
+const fetchProjects = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/api/projects", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    
+    setProjects(data); // This updates the progress bar
+
+    const supportData = {};
+    data.forEach((p) => {
+      supportData[p._id] = p.raised || 0;
+    });
+    setTotalSupport(supportData);
+  } catch (err) {
+    console.error("Error fetching projects:", err);
+  }
+};
+
+
+// 2. Load data on first visit
+useEffect(() => {
+  if (token) fetchProjects();
+}, [token]);
+
+// 3. Refresh when returning from the Chapa payment page (Tab Focus)
+useEffect(() => {
+  const handleFocus = () => fetchProjects();
+  window.addEventListener("focus", handleFocus);
+  return () => window.removeEventListener("focus", handleFocus);
+}, []);
+
+
+
+
+// 4. Check if the URL says "success" and refresh
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const txRef = urlParams.get('tx_ref');
+
+  if (txRef) {
+    fetch(`http://localhost:5000/api/payments/verify/${txRef}`)
+      .then(res => res.json())
+      .then((data) => {
+        console.log("VERIFY RESPONSE:", data);
+
+        // 🔥 FIX HERE
+        if (data.status === "success") {
+          Swal.fire("Success!", "Payment recorded and project funded.", "success");
+
+          // refresh from backend
+          fetchProjects();
+
+          // clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          console.log("Verification not ready yet...");
+        }
+      })
+      .catch(err => console.error("Verification error:", err));
+  }
+}, []);
+
+
+
+
+const handleChapaPayment = async (projectId, amount) => {
+ if (!amount || amount <= 5000) {
+  Swal.fire({
+    icon: "warning",
+    title: "Invalid Amount",
+    text: "Minimum investment amount is 5000 ETB.",
+  });
+  return;
+}
+
+  const token = localStorage.getItem("token"); // make sure token exists
+ if (!token) {
+  Swal.fire({
+    icon: "error",
+    title: "Login Required",
+    text: "You must log in before making an investment.",
+  });
+  return;
+}
+Swal.fire({
+  title: "Processing Payment",
+  text: "Please wait...",
+  allowOutsideClick: false,
+  didOpen: () => {
+    Swal.showLoading();
+  },
+});
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/payments/${projectId}/pay`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ send JWT token
+      },
+      body: JSON.stringify({
+       amount: Number(amount),
+        email: user.email,
+        name: user.name,
+        projectName: projects.find(p => p._id === projectId)?.title || `Project ${projectId}`,
+      }),
+    });
+Swal.close();
+
+
+    const data = await res.json();
+    console.log("Frontend payment response:", data);
+
+    if (data.payment_url) {
+      Swal.fire({
+  title: "Redirecting to Payment",
+  text: "Please wait...",
+  allowOutsideClick: false,
+  didOpen: () => {
+    Swal.showLoading();
+  },
+});
+      window.location.href = data.payment_url;
+    } else {
+     Swal.fire({
+  icon: "error",
+  title: "Payment Failed",
+  text: data.message || "Please try again.",
+});
+    }
+  } catch (err) {
+    console.error(err);
+  Swal.fire({
+  icon: "error",
+  title: "Payment Error",
+  text: "Unable to start payment. Try again later.",
+});
+  }
+};
+
+
 
 
 const handleRequestInvestment = async (projectId) => {
@@ -32,9 +198,14 @@ const handleRequestInvestment = async (projectId) => {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.message);
-      return;
-    }
+  Swal.fire({
+    icon: "error",
+    title: "Request Failed",
+    text: data.message || "Unable to process your request.",
+    confirmButtonColor: "#2563eb"
+  });
+  return;
+}
 
     // ✅ update UI instantly
     setProjects(prev =>
@@ -43,39 +214,31 @@ const handleRequestInvestment = async (projectId) => {
       )
     );
 
-    alert("✅ Request sent. Project moved to Pending!");
+   Swal.fire({
+  icon: "success",
+  title: "Request Sent",
+  text: "Your investment request was submitted successfully.",
+});
 
   } catch (err) {
-    console.error(err);
-  }
+  console.error(err);
+
+  Swal.fire({
+    icon: "error",
+    title: "Request Failed",
+    text: "Unable to send investment request. Please try again.",
+  });
+}
 };
 
 
 
-  // ---------------- Fetch projects ----------------
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/projects", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        setProjects(data);
 
-        // Initialize total support
-        const supportData = {};
-        data.forEach((p) => {
-          supportData[p._id] = p.totalSupport || 0;
-        });
-        setTotalSupport(supportData);
-      } catch (err) {
-        console.error("Error fetching projects:", err);
-      }
-    };
-    fetchProjects();
-  }, [token]);
 
+
+
+
+  
   const categories = [
     "All", "Health", "Education", "Agriculture", "Energy", "Finance",
     "Software Solutions", "Manufacturing", "Transport", "Tourism",
@@ -100,15 +263,23 @@ const handleRequestInvestment = async (projectId) => {
 
   const handleSupport = async (projectId, projectTitle, minAmount, fullPrice, status) => {
     if (status !== "Approved") {
-      alert("You can only support Approved projects.");
+      Swal.fire({
+  icon: "warning",
+  title: "Project Not Available",
+  text: "Only approved projects can receive investments.",
+});
       return;
     }
 
-    const amount = parseFloat(supportAmounts[projectId]);
-    if (!amount || amount < minAmount) {
-      alert(`Please enter a valid amount (min $${minAmount}).`);
-      return;
-    }
+   const amount = parseFloat(supportAmounts[projectId]);
+if (isNaN(amount) || amount <= 5000) {
+  Swal.fire({
+  icon: "warning",
+  title: "Invalid Amount",
+  text: "Please enter a valid investment amount.",
+});
+  return;
+}
 
     try {
       const res = await fetch(`http://localhost:5000/api/projects/${projectId}/support`, {
@@ -125,16 +296,18 @@ const handleRequestInvestment = async (projectId) => {
 
       setTotalSupport((prev) => ({
         ...prev,
-        [projectId]: updated.totalSupport,
+        [projectId]: updated.raised,
       }));
 
       setProjects((prev) =>
-        prev.map((p) => (p._id === projectId ? { ...p, totalSupport: updated.totalSupport } : p))
+        prev.map((p) => (p._id === projectId ? { ...p, raised: updated.raised } : p))
       );
 
-      alert(
-        `You supported "${projectTitle}" with $${amount}. Total supported: $${updated.totalSupport}/${fullPrice}`
-      );
+    Swal.fire({
+  icon: "success",
+  title: "Investment Successful",
+  text: `You invested ${amount} ETB in "${projectTitle}".`,
+});
 
       setSupportAmounts((prev) => ({ ...prev, [projectId]: "" }));
     } catch (err) {
@@ -142,8 +315,114 @@ const handleRequestInvestment = async (projectId) => {
     }
   };
 
+
+const addToCart = (project) => {
+  const amount = parseFloat(supportAmounts[project._id]);
+  
+  // Calculate how much money is still needed
+  const totalRaised = project.raised || 0;
+  const goalAmount = project.price; // This is the total price of the project
+  
+  const remainingNeeded = goalAmount - totalRaised;
+
+  // 1. Basic Validation
+  if (!amount || amount < 5000) {
+    Swal.fire("Minimum Amount", "Minimum investment is 5,000 ETB", "warning");
+    return;
+  }
+
+  // 2. Check if project is already finished
+  if (remainingNeeded <= 0) {
+    Swal.fire("Project Fully Funded", "This project has already reached its goal!", "info");
+    return;
+  }
+
+  // 3. Check if investor is trying to pay too much
+  if (amount > remainingNeeded) {
+    Swal.fire({
+      icon: "error",
+      title: "Amount Exceeds Goal",
+      text: `You can only invest up to ${remainingNeeded.toLocaleString()} ETB to complete this project's funding.`,
+    });
+    return;
+  }
+
+  // 4. Check if already in cart
+  const exists = cart.find(item => item._id === project._id);
+  if (exists) {
+    Swal.fire("Already in Cart", "You have already added this project to your list.", "info");
+    return;
+  }
+
+  // 5. Success - Add to cart
+  setCart(prev => [...prev, { ...project, amount }]);
+  Swal.fire({ title: "Added to Summary", icon: "success", toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 });
+};
+  
+
+
+
+          const handleCartPayment = async () => {
+            const totalAmount = cart.reduce((sum, item) => sum + item.amount, 0);
+
+            if (totalAmount <= 0) return;
+
+            Swal.fire({
+              title: "Confirm Payment",
+              text: `Total: ${totalAmount} ETB`,
+              showCancelButton: true,
+            }).then(async (result) => {
+              if (!result.isConfirmed) return;
+
+              try {
+                const res = await fetch("http://localhost:5000/api/payments/cart-pay", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    projects: cart.map(item => ({
+                      projectId: item._id,
+                      projectName: item.title,
+                      amount: item.amount
+                    })),
+                    email: user.email,
+                    name: user.name,
+                  }),
+                });
+
+                const data = await res.json();
+
+                if (data.payment_url) {
+                  // Redirect to Chapa
+                  window.location.href = data.payment_url;
+                } else {
+                  Swal.fire("Error", data.message || "Payment failed", "error");
+                }
+
+              } catch (err) {
+                console.error(err);
+                Swal.fire("Error", "Server error", "error");
+              }
+            });
+          };
+
+
+
+
   const handleAskQuestion = async (projectId) => {
-    const questionText = prompt("Enter your question:");
+   const { value: questionText } = await Swal.fire({
+  title: "Ask a Question",
+  input: "text",
+  inputPlaceholder: "Type your question here...",
+  showCancelButton: true,
+});
+
+if (!questionText) return;
+
+
+
     if (!questionText) return;
 
     try {
@@ -164,15 +443,51 @@ const handleRequestInvestment = async (projectId) => {
       );
       if (selectedProject?._id === projectId) setSelectedProject(updated);
 
-      alert("Question submitted!");
+      Swal.fire({
+  icon: "success",
+  title: "Question Submitted",
+  text: "Your question was sent to the project owner.",
+});
+
     } catch (err) {
-      console.error("Error adding question:", err);
-    }
+  console.error("Error adding question:", err);
+
+  Swal.fire({
+    icon: "error",
+    title: "Question Failed",
+    text: "Could not submit your question.",
+  });
+}
   };
 
   return (
-    <div className="investor-dashboard">
+    <div className="/investor">
       <h1>Investor Dashboard</h1>
+
+
+      <div className="cart-box">
+  <h2>🛒 Cart ({cart.length})</h2>
+
+  {cart.map(item => (
+    <div key={item._id} className="cart-item">
+      <p>{item.title}</p>
+      <p>{item.amount} ETB</p>
+
+      <button onClick={() =>
+        setCart(cart.filter(p => p._id !== item._id))
+      }>
+        Remove
+      </button>
+    </div>
+  ))}
+
+  {cart.length > 0 && (
+    <button onClick={handleCartPayment}>
+      Pay All 💳
+    </button>
+  )}
+</div>
+
 
       {/* Search & Filter */}
       <div className="filter-bar">
@@ -201,7 +516,10 @@ const handleRequestInvestment = async (projectId) => {
             <h2>{project.title}</h2>
             <p>Category: {project.category}</p>
             <p><strong>Problem Statement:</strong> {project.problemStatement || "N/A"}</p>
-            <p>Price: ${project.price} | Expected Profit: ${project.expectedProfit}</p>
+            
+           <p>Price: <strong>{formatCurrency(project.price)}</strong> | Expected Profit: <strong>{formatCurrency(project.expectedProfit)}</strong></p>
+
+
             <p>
               Status:{" "}
               <span
@@ -219,10 +537,10 @@ const handleRequestInvestment = async (projectId) => {
               </span>
             </p>
                  {project.status === "Sold" && project.soldTo && (
-  <p className="sold-to">
-    💰 Sold to {project.soldTo.name} 
-  </p>
-)}
+          <p className="sold-to">
+            💰 Sold to {project.soldTo.name} 
+          </p>
+        )}
                       
             <div className="media">
               {(project.images || []).slice(0, 1).map((img, idx) => (
@@ -233,51 +551,128 @@ const handleRequestInvestment = async (projectId) => {
               ))}
             </div>
 
-            <div className="card-buttons">
-              <button onClick={() => toggleFavorite(project._id)}>
-                {favorites.includes(project._id) ? <FaStar /> : <FaRegStar />}
+
+                <div className="card-buttons">
+                  <button onClick={() => toggleFavorite(project._id)}>
+                    {favorites.includes(project._id) ? <FaStar /> : <FaRegStar />}
+                  </button>
+
+                  {/* Existing investment request buttons */}
+                  {(() => {
+                    const myRequest = project.investmentRequests?.find(
+                      (r) =>
+                        r.investor?.toString() === userId ||
+                        r.investor?._id?.toString() === userId
+                    );
+
+                    if (project.status === "Sold") {
+                      return (
+                        <button disabled>
+                          {project.soldTo?._id === userId ? "Your Project ✅" : "Sold"}
+                        </button>
+                      );
+                    }
+
+                    if (myRequest) {
+                      return (
+                        <button disabled>
+                          {myRequest.status === "Pending" && "Request Pending"}
+                          {myRequest.status === "Approved" && "Approved ✅"}
+                          {myRequest.status === "Rejected" && "Rejected ❌"}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button onClick={() => handleRequestInvestment(project._id)}>
+                        Request to Invest
+                      </button>
+                    );
+                  })()}
+
+                  {/* ✅ Add this button */}
+                  <button className="btn-view-details" onClick={() => setSelectedProject(project)}>
+                    <FaInfoCircle /> View Details
+                  </button>
+                </div>
+
+
+
+          <div className="investment-section">
+               {/* Progress Info */}
+                 <div className="funding-status">
+              <div className="status-labels">
+                <span>Raised: {formatCurrency(project.raised || 0)}</span>
+                <span className="goal-text">Goal: {formatCurrency(project.price)}</span>
+              </div>
+              <div className="progress-bar-bg">
+                <div
+                  className="progress-bar-fill"
+                  style={{
+                    width: `${Math.min(((project.raised || 0) / project.price) * 100, 100)}%`,
+                  }}
+                ></div>
+              </div>
+
+              <p className="remaining-needed">
+                Remaining: <strong>{formatCurrency(project.price - (project.raised || 0))} ETB</strong>
+              </p>
+            </div>
+            <div className="amount-input-container">
+              <span className="currency-prefix">ETB</span>
+              <input
+                type="number"
+                placeholder="Investment Amount"
+                className="professional-input"
+                value={supportAmounts[project._id] || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const remaining = project.price - (project.raised || 0);
+                  // Prevent typing more than what's needed
+                  if (val > remaining) {
+                    setSupportAmounts(prev => ({ ...prev, [project._id]: remaining }));
+                  } else {
+                    setSupportAmounts(prev => ({ ...prev, [project._id]: val }));
+                  }
+                }}
+              />
+
+
+            </div>
+
+          <div className="investment-button-group">
+              <button 
+                className="btn-pay-now"
+                disabled={project.status !== "Approved" || (project.raised >= project.price)}
+                onClick={() => handleChapaPayment(project._id, supportAmounts[project._id])}
+              >
+                {project.raised >= project.price ? "Fully Funded" : "Invest Now"}
               </button>
+
+              <button 
+                className="btn-add-cart"
+                disabled={project.status !== "Approved" || (project.raised >= project.price)}
+                onClick={() => addToCart(project)}
+              >
+                <FaShoppingCart />
+              </button>
+
+
+
               
-                     {(() => {
-  const myRequest = project.investmentRequests?.find(
-    (r) =>
-      r.investor?.toString() === userId ||
-      r.investor?._id?.toString() === userId
-  );
-
-if (project.status === "Sold") {
-  return (
-    <button disabled>
-      {project.soldTo?._id === userId ? "Your Project ✅" : "Sold"}
-    </button>
-  );
-}
-
-  if (myRequest) {
-    return (
-      <button disabled>
-        {myRequest.status === "Pending" && "Request Pending"}
-        {myRequest.status === "Approved" && "Approved ✅"}
-        {myRequest.status === "Rejected" && "Rejected ❌"}
-      </button>
-    );
-  }
-
-  return (
-    <button onClick={() => handleRequestInvestment(project._id)}>
-      Request to Invest
-    </button>
-  );
-})()}
-
-
-
-
-              <button onClick={() => setSelectedProject(project)}>View Details</button>
             </div>
           </div>
+
+
+
+
+            </div>
+         
         ))}
       </div>
+
+
+      
 
       {/* Project Modal */}
       {selectedProject && (
@@ -289,7 +684,9 @@ if (project.status === "Sold") {
             <h2>{selectedProject.title}</h2>
             <p>{selectedProject.description}</p>
             <p><strong>Problem Statement:</strong> {selectedProject.problemStatement || "N/A"}</p>
-            <p>Price: ${selectedProject.price} | Expected Profit: ${selectedProject.expectedProfit}</p>
+            
+            <p>Price: <strong>{formatCurrency(selectedProject.price)}</strong> | Expected Profit: <strong>{formatCurrency(selectedProject.expectedProfit)}</strong></p>
+
             <p>Category: {selectedProject.category}</p>
             <p>
               Status:{" "}
@@ -307,6 +704,8 @@ if (project.status === "Sold") {
               </span>
             </p>
            
+
+
 
             <div className="media">
               {(selectedProject.images || []).map((img, idx) => (

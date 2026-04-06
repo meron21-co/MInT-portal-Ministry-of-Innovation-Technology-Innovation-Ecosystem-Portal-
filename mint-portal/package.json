@@ -17,6 +17,8 @@
     "react-router-dom": "^7.7.1",
     "react-router-hash-link": "^2.4.3",
     "react-scripts": "5.0.1",
+    "react-to-print": "^3.3.0",
+    "sweetalert2": "^11.26.22",
     "web-vitals": "^2.1.4",
     "yup": "^1.7.0"
   },

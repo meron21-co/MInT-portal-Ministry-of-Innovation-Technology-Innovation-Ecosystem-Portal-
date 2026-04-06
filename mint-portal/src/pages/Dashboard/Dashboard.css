@@ -18,89 +18,199 @@
   color: #0f172a;
 }
 
-/* ===== Add Project Section ===== */
-.add-project-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 2rem;
-}
 
-.add-btn {
-  background: #2563eb;
-  color: white;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
-  border: none;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
 
-.add-btn:hover {
-  background: #1d4ed8;
-}
 
-/* ===== Add Project Form ===== */
+/* === Container === */
 .add-project {
-  background: white;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 2.5rem 3rem;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease-in-out;
+}
+
+.add-project h2 {
+  text-align: center;
   margin-bottom: 2rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
 }
 
-.add-project h1 {
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  color: #0f172a;
+/* === Form Styling === */
+.project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.project-form input,
-.project-form textarea {
+.project-form input[type="text"],
+.project-form input[type="number"],
+.project-form textarea,
+.project-form select {
   width: 100%;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.5rem;
+  padding: 0.9rem 1.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
   font-size: 1rem;
+  color: #333;
+  transition: all 0.3s;
+  background-color: #f9f9f9;
+}
+
+.project-form input:focus,
+.project-form textarea:focus,
+.project-form select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
+  background-color: #fff;
 }
 
 .project-form textarea {
+  min-height: 120px;
   resize: vertical;
-  min-height: 100px;
 }
 
+/* Labels */
 .project-form label {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #555;
   display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #334155;
 }
 
-.project-form button {
-  background: #2563eb;
-  color: white;
-  font-weight: 600;
-  padding: 0.7rem 1.5rem;
-  border: none;
-  border-radius: 0.5rem;
+/* === Media Previews === */
+.preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-top: 0.5rem;
+}
+
+.media-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s;
+}
+
+.media-wrapper:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+.preview-img,
+.preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Delete Button */
+.media-wrapper button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
   cursor: pointer;
-  transition: background 0.3s;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.project-form button:hover {
-  background: #1d4ed8;
+.media-wrapper button:hover {
+  background: #ef4444;
+  transform: scale(1.1);
 }
 
-.question-item {
-  background: #f1f5f9;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-radius: 0.5rem;
+/* === Form Actions === */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
 }
+
+.form-actions button {
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-actions button[type="submit"] {
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  color: #fff;
+}
+
+.form-actions button[type="submit"]:hover {
+  background: linear-gradient(90deg, #4338ca, #4f46e5);
+  transform: translateY(-2px);
+}
+
+.form-actions .cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.form-actions .cancel-btn:hover {
+  background: #d1d5db;
+  transform: translateY(-2px);
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .add-project {
+    padding: 2rem;
+  }
+  .media-wrapper {
+    width: 110px;
+    height: 110px;
+  }
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-project {
+    padding: 1.5rem;
+  }
+  .add-project h2 {
+    font-size: 1.6rem;
+  }
+  .media-wrapper {
+    width: 90px;
+    height: 90px;
+  }
+}
+
+
+
 
 /* ===== Projects Section ===== */
 .projects-section h2 {
@@ -1430,4 +1540,314 @@ button:focus {
   .investment-requests {
     padding: 10px;
   }
+}
+
+
+/* Container for input + button */
+.investment-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* spacing between input and button */
+  margin-top: 10px;
+}
+
+/* Input field */
+.investment-wrapper input[type="number"] {
+  flex: 1; /* take remaining space */
+  padding: 10px 15px;
+  font-size: 16px;
+  border: 1.5px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Input focus effect */
+.investment-wrapper input[type="number"]:focus {
+  border-color: #4f46e5; /* violet-ish blue */
+  box-shadow: 0 0 5px rgba(79, 70, 229, 0.5);
+}
+
+/* Button styling */
+.investment-wrapper button {
+  padding: 10px 20px;
+  background-color: #4f46e5; /* violet-ish blue */
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-size: 16px;
+}
+
+/* Button hover */
+.investment-wrapper button:hover {
+  background-color: #3730a3; /* darker violet */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Button active (click effect) */
+.investment-wrapper button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Responsive for mobile */
+@media (max-width: 500px) {
+  .investment-wrapper {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .investment-wrapper button {
+    width: 100%;
+  }
+}
+.cart-box {
+  background: #f9fafb;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+}
+
+.cart-box button {
+  background: #2563eb;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cart-box button:hover {
+  background: #1e40af;
+}
+
+/* INVESTMENT SECTION CONTAINER */
+.investment-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-top: 15px;
+}
+
+/* INPUT BOX WITH ETB PREFIX */
+.amount-input-container {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.amount-input-container:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.currency-prefix {
+  background: #f1f5f9;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  border-right: 1px solid #cbd5e1;
+}
+
+.professional-input {
+  border: none;
+  padding: 10px;
+  width: 100%;
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+}
+
+/* BUTTON GROUPS */
+.investment-button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-pay-now {
+  flex: 1;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-pay-now:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-add-cart {
+  background: white;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-add-cart:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.btn-pay-now:disabled, .btn-add-cart:disabled {
+  background: #e2e8f0;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* VIEW DETAILS BUTTON */
+.btn-view-details {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.btn-view-details:hover {
+  color: #1e293b;
+  text-decoration: underline;
+}
+
+
+
+/* --- FUNDING PROGRESS SECTION --- */
+.funding-status {
+  margin-bottom: 15px;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.status-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.goal-text {
+  color: #2563eb; /* Blue for Goal */
+}
+
+/* The Background of the Progress Bar */
+.progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0; /* Light Grey */
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+/* The actual colored bar showing progress */
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #10b981); /* Blue to Green gradient */
+  border-radius: 10px;
+  transition: width 0.6s ease-in-out;
+}
+
+.remaining-needed {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: right;
+  margin: 0;
+}
+
+.remaining-needed strong {
+  color: #dc2626; /* Red color for the remaining amount */
+}
+
+/* --- INPUT AND BUTTON GROUP --- */
+.investment-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.amount-input-container {
+    display: flex;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.currency-prefix {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #64748b;
+}
+
+.professional-input {
+    border: none;
+    outline: none;
+    padding: 8px;
+    width: 100%;
+}
+
+.investment-button-group {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-pay-now {
+    flex: 2;
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-add-cart {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #2563eb;
+    color: #2563eb;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
 }
