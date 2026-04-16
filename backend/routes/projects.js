@@ -119,17 +119,11 @@ router.post("/:id/request", async (req, res) => {
 router.put("/:id", upload.fields([{ name: "images" }, { name: "videos" }]), async (req, res) => {
   try {
     const { id } = req.params;
-    if (!isValidObjectId(id)) return res.status(400).json({ message: "Invalid project ID" });
 
     const project = await Project.findById(id);
     if (!project) return res.status(404).json({ message: "Project not found" });
 
-    const user = req.user;
-    if (user.role !== "admin" && project.inventorEmail !== user.email) {
-      return res.status(403).json({ message: "Forbidden: Not your project" });
-    }
-
-    const { title, description, price, problemStatement, expectedProfit, category, removeImages, removeVideos } = req.body;
+    const { title, description, price, problemStatement, expectedProfit, category } = req.body;
 
     if (title) project.title = title;
     if (description) project.description = description;
@@ -138,47 +132,44 @@ router.put("/:id", upload.fields([{ name: "images" }, { name: "videos" }]), asyn
     if (expectedProfit) project.expectedProfit = expectedProfit;
     if (category) project.category = category;
 
-    // Remove old images
-    if (removeImages) {
-      const imagesToRemove = Array.isArray(removeImages) ? removeImages : [removeImages];
-      project.images = project.images.filter(img => {
-        const filename = path.basename(img);
-        if (imagesToRemove.includes(filename)) {
-          const filePath = path.join(imagesDir, filename);
-          try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
-          return false;
-        }
-        return true;
-      });
-    }
+    // ---------- FIX IMAGES ----------
+    const existingImages = req.body.existingImages
+      ? Array.isArray(req.body.existingImages)
+        ? req.body.existingImages
+        : [req.body.existingImages]
+      : [];
+
+    const newImages = req.files?.images
+      ? req.files.images.map(f => `/uploads/images/${f.filename}`)
+      : [];
+
+    project.images = [...existingImages, ...newImages];
 
 
+    // ---------- FIX VIDEOS ----------
+    const existingVideos = req.body.existingVideos
+      ? Array.isArray(req.body.existingVideos)
+        ? req.body.existingVideos
+        : [req.body.existingVideos]
+      : [];
 
-    // Remove old videos
-    if (removeVideos) {
-      const videosToRemove = Array.isArray(removeVideos) ? removeVideos : [removeVideos];
-      project.videos = project.videos.filter(vid => {
-        const filename = path.basename(vid);
-        if (videosToRemove.includes(filename)) {
-          const filePath = path.join(videosDir, filename);
-          try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
-          return false;
-        }
-        return true;
-      });
-    }
+    const newVideos = req.files?.videos
+      ? req.files.videos.map(f => `/uploads/videos/${f.filename}`)
+      : [];
 
-    // Add new uploaded files
-    if (req.files?.images) project.images.push(...req.files.images.map(f => `/uploads/images/${f.filename}`));
-    if (req.files?.videos) project.videos.push(...req.files.videos.map(f => `/uploads/videos/${f.filename}`));
+    project.videos = [...existingVideos, ...newVideos];
 
     await project.save();
     res.json(project);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server Error" });
   }
 });
+
+
+
 
 // Get all projects
 router.get("/", async (req, res) => {

@@ -149,10 +149,23 @@ function AddProject({ project, onProjectSaved, onCancel, currentUser }) {
     else setNewVideos(prev => [...prev, ...files]);
   };
 
-  const removeFile = (index, type, existing = false) => {
-    if (type === "image") existing ? setImages(prev => prev.filter((_, i) => i !== index)) : setNewImages(prev => prev.filter((_, i) => i !== index));
-    else existing ? setVideos(prev => prev.filter((_, i) => i !== index)) : setNewVideos(prev => prev.filter((_, i) => i !== index));
-  };
+const removeFile = (index, type, existing = false) => {
+  if (type === "image") {
+    if (existing) {
+      setImages((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setNewImages((prev) => prev.filter((_, i) => i !== index));
+    }
+  }
+
+  if (type === "video") {
+    if (existing) {
+      setVideos((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setNewVideos((prev) => prev.filter((_, i) => i !== index));
+    }
+  }
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -257,7 +270,7 @@ try {
   const [projects, setProjects] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
-  const [wallet, setWallet] = useState(500);
+ 
 
   useEffect(() => {
     if (!currentUser) {
@@ -378,7 +391,8 @@ try {
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>{role === "admin" ? "Admin Dashboard" : "Inventor Dashboard"}</h1>
-        {role === "inventor" && <div className="wallet-info">💰 Wallet Balance: ${wallet.toFixed(2)}</div>}
+        {role === "inventor" && <p>Welcome, {currentUser?.name || "Inventor"}! 💡</p>}
+
       </header>
 
       <ApprovalCriteria />
