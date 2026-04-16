@@ -461,28 +461,31 @@ if (!questionText) return;
   };
 
   return (
+    <div className="investors">
     <div className="/investor">
       <h1>Investor Dashboard</h1>
 
-
-      <div className="cart-box">
+</div>
+     <div className="cart-box">
   <h2>🛒 Cart ({cart.length})</h2>
 
   {cart.map(item => (
     <div key={item._id} className="cart-item">
-      <p>{item.title}</p>
-      <p>{item.amount} ETB</p>
-
-      <button onClick={() =>
-        setCart(cart.filter(p => p._id !== item._id))
-      }>
+      <div className="cart-info">
+        <p className="cart-title">{item.title}</p>
+        <p className="cart-price">{item.amount} ETB</p>
+      </div>
+      <button 
+        className="remove-btn"
+        onClick={() => setCart(cart.filter(p => p._id !== item._id))}
+      >
         Remove
       </button>
     </div>
   ))}
 
   {cart.length > 0 && (
-    <button onClick={handleCartPayment}>
+    <button className="pay-all-btn" onClick={handleCartPayment}>
       Pay All 💳
     </button>
   )}

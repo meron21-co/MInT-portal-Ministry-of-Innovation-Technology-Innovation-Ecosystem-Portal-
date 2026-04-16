@@ -26,6 +26,7 @@ const [showEditForm, setShowEditForm] = useState(false);
 const [showRejectBox, setShowRejectBox] = useState(false);
 const [selectedProject, setSelectedProject] = useState(null);
 const [rejectReason, setRejectReason] = useState("");
+const [payments, setPayments] = useState([]);
 
 
   // ----------------- Safe Fetch -----------------
@@ -63,23 +64,28 @@ const [rejectReason, setRejectReason] = useState("");
   };
 
   const fetchProjects = async () => {
-    const data = await safeFetch("http://localhost:5000/api/projects", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    return data || [];
-  };
+  const data = await safeFetch("http://localhost:5000/api/projects", {
+    headers: token
+      ? { Authorization: `Bearer ${token}` }
+      : {},
+  });
+
+  return Array.isArray(data) ? data : [];
+};
 
   const fetchAllData = async () => {
     try {
-      const [inventorsData, investorsData, projectsData] = await Promise.all([
+      const [inventorsData, investorsData, projectsData,paymentsData] = await Promise.all([
         fetchInventors(),
         fetchInvestors(),
         fetchProjects(),
+        fetchPayments(),
       ]);
 
       setInventors(inventorsData);
       setInvestors(investorsData);
       setProjects(projectsData);
+      setPayments(paymentsData || []);
 
       setStats({
         totalUsers: inventorsData.length + investorsData.length,
@@ -90,8 +96,34 @@ const [rejectReason, setRejectReason] = useState("");
     }
   };
 
+const fetchPayments = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://localhost:5000/api/payments", { // ✅ full backend URL
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const text = await res.text(); // read raw response for debugging
+      console.error("Error fetching payments:", text);
+      setPayments([]);
+      return;
+    }
+
+    const data = await res.json(); // now this should be valid JSON
+    setPayments(data || []);
+  } catch (err) {
+    console.error("Fetch payments error:", err);
+    setPayments([]);
+  }
+};
+
+  
+
+
   useEffect(() => {
     fetchAllData();
+    fetchPayments();
   }, []);
 
   // ----------------- Add User -----------------
@@ -182,32 +214,33 @@ const handleEditUser = async (id, role, updatedData) => {
 
   // ----------------- Update Project Status -----------------
 const handleUpdateProjectStatus = async (project, status, reason = "") => {
-  const updatedProject = await safeFetch(
+  const data = await safeFetch(
     `http://localhost:5000/api/projects/${project._id}/status`,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ status, reason }),
     }
   );
 
-  if (!updatedProject) {
-    alert("Failed to update project status!");
+  if (!data) {
+    alert("Failed to update project!");
     return;
   }
 
+  // IMPORTANT: backend returns { project }
+  const updatedProject = data.project;
+
   setProjects((prev) =>
-    prev.map((p) => (p._id === project._id ? updatedProject : p))
+    prev.map((p) =>
+      p._id === project._id ? updatedProject : p
+    )
   );
 
-  alert(
-    status === "Approved"
-      ? "✅ Project approved successfully!"
-      : `❌ Project rejected for reason: ${reason}`
-  );
+  alert(`Project ${status} successfully`);
 };
 
 
@@ -238,6 +271,50 @@ const handleMarkAsSold = async (projectId, investorId) => {
 
   alert("💰 Project sold successfully!");
 };
+
+
+
+const getProjectStatsFromBackend = (projectId) => {
+  let totalPayments = 0;
+  let totalAmount = 0;
+  let investorsSet = new Set();
+  let paid = 0;
+  let pending = 0;
+  let paidInvestors = [];
+
+payments.forEach((payment) => {
+  if (!Array.isArray(payment.projects)) return;
+
+  payment.projects.forEach((proj) => {
+    const currentProjectId = String(proj.projectId?._id || proj.projectId);
+
+    if (currentProjectId === String(projectId)) {
+      totalPayments += 1;
+
+      totalAmount += Number(proj.amount || 0);
+
+      investorsSet.add(payment.email);
+
+       if (payment.status === "success") {
+        paid++;
+        paidInvestors.push(payment.email);
+      } else {
+        pending++;
+      }
+    }
+  });
+});
+
+  return {
+    totalPayments,
+    totalAmount,
+    investors: investorsSet.size,
+    paid,
+    pending,
+    paidInvestors,
+  };
+};
+
 
 
   // ----------------- Render -----------------
@@ -355,7 +432,7 @@ const handleMarkAsSold = async (projectId, investorId) => {
                  <div className="button-group">
                  <button
           className="delete"
-          onClick={() => handleDeleteUser(u._id, "investor")}
+          onClick={() => handleDeleteUser(u._id, "inventor")}
 >
                     Delete
                   </button>
@@ -393,9 +470,11 @@ const handleMarkAsSold = async (projectId, investorId) => {
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
 
-              
+
+
+
+            <tbody>             
               {investors.map((u) => (
                 <tr key={u._id}>
                   <td>{u.name}</td>
@@ -418,15 +497,11 @@ const handleMarkAsSold = async (projectId, investorId) => {
                 Edit
               </button>
             </div>
-
                 </td>
-
                 </tr>
               ))}
-
-
-
             </tbody>
+            
           </table>
         )}
       </section>
@@ -488,18 +563,82 @@ const handleMarkAsSold = async (projectId, investorId) => {
       </>
     )}
 
-    <button
-      onClick={() => {
-        handleEditUser(editingUser._id, editingUser.role, editingUser);
-        setShowEditForm(false);
-        setEditingUser(null);
-      }}
-    >
-      Save Changes
-    </button>
-    <button onClick={() => setShowEditForm(false)}>Cancel</button>
-  </section>
-)}
+              <button
+                onClick={() => {
+                  handleEditUser(editingUser._id, editingUser.role, editingUser);
+                  setShowEditForm(false);
+                  setEditingUser(null);
+                }}
+              >
+                Save Changes
+              </button>
+              <button onClick={() => setShowEditForm(false)}>Cancel</button>
+            </section>
+          )}
+
+
+
+
+
+          <div className="payments-section">
+            <h2>💰 Payments</h2>
+            {payments.length === 0 ? (
+              <p>No payments yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Investor</th>
+                    <th>Project</th>
+                    <th>Amount (ETB)</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+
+                 <tbody>
+                {payments.map((p) => (
+                  <React.Fragment key={p._id}>
+                    {(p.projects || []).length > 0 ?(
+                      p.projects.map((proj, idx) => (
+                        <tr key={proj.projectId + idx}>
+
+                         <td data-label="Investor">{p.email}</td>
+                        <td data-label="Project">{proj.projectName || "N/A"}</td>
+                        <td data-label="Amount">{proj.amount}</td>
+                        <td
+                          data-label="Status"
+                          className={
+                            p.status === "Paid"
+                              ? "status-paid"
+                              : p.status === "Pending"
+                              ? "status-pending"
+                              : "status-failed"
+                          }
+                        >
+                          {p.status}
+                        </td>
+                        <td data-label="Date">{new Date(p.createdAt).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr key={p._id}>
+                        <td>{p.email}</td>
+                        <td>-</td>
+                        <td>{p.amount}</td>
+                        <td>{p.status}</td>
+                        <td>{new Date(p.createdAt).toLocaleString()}</td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+
+
+              </table>
+            )}
+          </div>
+
 
 
       {/* Projects Section */}
@@ -528,82 +667,75 @@ const handleMarkAsSold = async (projectId, investorId) => {
                   <p><strong>Problem Statement:</strong> {p.problemStatement}</p>
                   <p>Price: ${p.price || 0}</p>
                   <p>Expected Profit: ${p.expectedProfit || 0}</p>
-                  <p>
-                    Status:{" "}
-                    {p.status === "Approved" ? (
-                      <span className="approved">✅ Approved</span>
-                    ) : p.status === "Rejected" ? (
-                      <span className="rejected">❌ Rejected</span>
-                    ) :p.status === "Sold" ? (
-                            <span style={{ color: "gold", fontWeight: "bold" }}>💰 Sold</span>
-                          ) :(
-                      <span className="pending">⏳ Pending</span>
-                    )}
-                  </p>
-                {/* {p.status !== "Approved" && ( */}
-                {p.status === "Sold" && p.soldTo && (
-                  <p style={{ color: "gold", fontWeight: "bold" }}>
-                    💰 Sold to {p.soldTo.name} ({p.soldTo.email})
-                  </p>
+                                <p>
+                Status:{" "}
+                {p.status === "Approved" ? (
+                  <span className="approved">✅ Approved</span>
+                ) : p.status === "Rejected" ? (
+                  <span className="rejected">❌ Rejected</span>
+                ) : (
+                  <span className="pending">⏳ Pending</span>
+                )}
+              </p>
+                      
+                         <div className="project-actions">
+                {p.status !== "Approved" && (
+                  <button
+                    className="approve-btn"
+                    onClick={() => handleUpdateProjectStatus(p, "Approved")}
+                  >
+                    ✅ Approve
+                  </button>
                 )}
 
-                <div className="admin-actions">
-                {p.status !== "Approved" && p.status !== "Sold" && (
-                        <button onClick={() => handleUpdateProjectStatus(p, "Approved")}>
-                          ✅ Approve
-                        </button>
-                      )}
-
-                      {p.status !== "Rejected" && p.status !== "Sold" && (
-                        <button
-                          onClick={() => {
-                            setSelectedProject(p);
-                            setShowRejectBox(true);
-                          }}
-                        >
-                          ❌ Reject
-                        </button>
-                      )}
-                          {p.status === "Approved" && (
-  <div className="investment-requests">
-
-    <h4> Investment Requests</h4>
-
-    {p.investmentRequests?.length === 0 && (
-      <p>No investors requested yet.</p>
-    )}
-
-    {p.investmentRequests?.map((r) => {
-      const investor =
-        typeof r.investor === "object" ? r.investor : null;
-
-      if (!investor) return null;
-
-      return (
-        <div key={investor._id} className="request-row">
-
-          <span>
-            👤 {investor.name} — {investor.email}
-          </span>
-
-          <button
-            className="sell-btn"
-            onClick={() =>
-              handleMarkAsSold(p._id, investor._id)
-            }
-            disabled={p.status === "Sold"}
-          >
-            💰 Sell Project
-          </button>
-
-        </div>
-      );
-    })}
-  </div>
-)}
-
-
+                {p.status !== "Rejected" && (
+                  <button
+                    className="reject-btn"
+                    onClick={() => {
+                      setSelectedProject(p);
+                      setShowRejectBox(true);
+                    }}
+                  >
+                    ❌ Reject
+                  </button>
+                )}
               </div>
+              
+                
+
+
+
+{p.status === "Approved" && (() => {
+  const stats = getProjectStatsFromBackend(p._id);
+
+  return (
+    <div className="admin-project-stats">
+      <h4>📊 Payments Overview </h4>
+
+      <p>💰 Payments Count: {stats.totalPayments}</p>
+      <p>👥 Investors: {stats.investors}</p>
+      <p>💵 Total Raised: {stats.totalAmount} ETB</p>
+
+      <p>
+        ✅ Paid: {stats.paid} | ⏳ Pending: {stats.pending}
+      </p>
+      <div className="investor-list">
+        <h5>👤 Paid Investors</h5>
+        {stats.paidInvestors.length === 0 ? (
+          <p>No paid investors yet</p>
+        ) : (
+          stats.paidInvestors.map((email, i) => (
+            <div key={i}>{email}</div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+})()}
+                
+
+
+              
                 {showRejectBox && selectedProject && (
                   <div className="reject-overlay">
                     <div className="reject-box">
@@ -646,7 +778,7 @@ const handleMarkAsSold = async (projectId, investorId) => {
 
 
                   {/* Media gallery */}
-                 {p.images.map((img) => (
+                 {(p.images || []).map((img)=> (
                   <img
                     key={img}
                     src={img.startsWith("http")
@@ -657,7 +789,7 @@ const handleMarkAsSold = async (projectId, investorId) => {
                   />
                 ))}
 
-              {p.videos.map((vid) => (
+              {p.videos?.map((vid) => (
   <video
     key={vid}
     src={vid.startsWith("http")
@@ -670,6 +802,7 @@ const handleMarkAsSold = async (projectId, investorId) => {
                 </div>
               </article>
             ))}
+
           </div>
         )}
       </section>

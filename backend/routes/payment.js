@@ -119,7 +119,6 @@ router.post("/cart-pay", authMiddleware, async (req, res) => {
 
 
 
-// -------------------- VERIFY PAYMENT (THE FIX) --------------------
 // -------------------- VERIFY PAYMENT (FINAL FIX) --------------------
 router.get("/verify/:tx_ref", async (req, res) => {
   const { tx_ref } = req.params;
@@ -188,6 +187,15 @@ router.get("/verify/:tx_ref", async (req, res) => {
   }
 });
 
+// Backend
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const payments = await Payment.find().populate("projects.projectId");
+    res.json(payments);  // must use res.json, NOT res.send(html)
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 export default router;
