@@ -1,4 +1,4 @@
-# MINT
+# MINT-Portal
 
 > Explore and invest in projects — seamlessly.
 
