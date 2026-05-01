@@ -29,7 +29,7 @@ const authMiddleware = async (req, res, next) => {
 
     // 4️⃣ Attach user info to request
     req.user = {
-      id: user._id.toString(),  // always use string for consistency
+      _id: user._id.toString(),  // always use string for consistency
       role: user.role,
       name: user.name,
       email: user.email,

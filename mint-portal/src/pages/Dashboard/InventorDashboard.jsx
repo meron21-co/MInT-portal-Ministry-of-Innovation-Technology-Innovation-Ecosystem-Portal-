@@ -53,46 +53,10 @@ function QuestionCard({ question, onAnswerUpdated }) {
   );
 }
 
-// ---------- Questions List ----------
-function QuestionsList({ questions, onAnswerUpdated }) {
-  if (!Array.isArray(questions)) return null;
-  return (
-    <div className="questions-list">
-      {questions.length > 0 ? (
-        questions.map((q) => (
-          <QuestionCard key={q._id} question={q} onAnswerUpdated={onAnswerUpdated} />
-        ))
-      ) : (
-        <p className="empty">No questions yet.</p>
-      )}
-    </div>
-  );
-}
 
-// ---------- Ask Question ----------
-function AskQuestion({ projectId, onQuestionAdded }) {
-  const [text, setText] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!text.trim()) return;
-    await onQuestionAdded(projectId, { text });
-    setText("");
-  };
 
-  return (
-    <form onSubmit={handleSubmit} className="ask-question-form">
-      <h4>Ask a Question</h4>
-      <textarea
-        placeholder="Type your question..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        required
-      />
-      <button type="submit">Submit Question</button>
-    </form>
-  );
-}
+
 
 // ---------- Approval Criteria ----------
 function ApprovalCriteria() {
@@ -256,7 +220,10 @@ const removeFile = (index, type, existing = false) => {
 
 // ---------- Inventor Dashboard ----------
 function InventorDashboard({ role = "inventor" }) {
+
+  
   const token = localStorage.getItem("token");
+
 
 let currentUser;
 try {
@@ -271,6 +238,7 @@ try {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
  
+  
 
   useEffect(() => {
     if (!currentUser) {
@@ -382,20 +350,70 @@ try {
   };
 
   const visibleProjects = Array.isArray(projects)
-    ? role === "inventor"
-      ? projects.filter(p => p.inventorEmail === currentUser?.email)
-      : projects
-    : [];
+  ? role === "inventor"
+    ? projects.filter(p => p.inventorEmail === currentUser?.email)
+
+    : role === "admin"
+    ? projects
+
+    : projects.filter(p => ["Approved", "Sold"].includes(p.status))
+  : [];
+
+
+const [payments, setPayments] = useState([]);
+
+const fetchPayments = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/api/payments", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setPayments(data || []);
+  } catch (err) {
+    console.error("Error fetching payments:", err);
+  }
+};
+
+useEffect(() => {
+  if (token) fetchPayments();
+}, [token]);
+
+
+
+const myProjects = projects.filter(
+  p => p.inventorEmail === currentUser?.email
+);
+
+// ✅ Calculate raised from actual successful payments
+const getProjectRaised = (projectId) => {
+  return payments.reduce((total, payment) => {
+    if (!Array.isArray(payment.projects)) return total;
+    payment.projects.forEach((proj) => {
+      const pid = String(proj.projectId?._id || proj.projectId);
+      if (pid === String(projectId) && payment.status === "success") {
+        total += Number(proj.amount || 0);
+      }
+    });
+    return total;
+  }, 0);
+};
+
+const totalRaisedAllProjects = myProjects.reduce(
+  (sum, p) => sum + getProjectRaised(p._id),
+  0
+);
 
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>{role === "admin" ? "Admin Dashboard" : "Inventor Dashboard"}</h1>
+        <h1></h1>
         {role === "inventor" && <p>Welcome, {currentUser?.name || "Inventor"}! 💡</p>}
 
       </header>
+ 
 
       <ApprovalCriteria />
+     
 
       {role === "inventor" && (
         <div className="add-project-container">
@@ -435,6 +453,17 @@ try {
 
       <section className="projects-section">
         <h2>{role === "admin" ? "All Projects" : "My Projects"}</h2>
+         <div className="raised-summary">
+
+  <div className="summary-item">
+    📦 <span>Projects:</span> {myProjects.length}
+  </div>
+
+  <div className="summary-item">
+    💰 <span>Total Raised:</span>{" "}
+    <strong>{totalRaisedAllProjects} ETB</strong>
+  </div>
+</div>
         {visibleProjects.length === 0
           ? <p className="empty">No projects yet.</p>
           : <div className="projects-grid">
@@ -445,9 +474,26 @@ try {
                     {project.category && <span className="project-category">{project.category}</span>}
                     <p>{project.description}</p>
                     <p><strong>Problem Statement:</strong> {project.problemStatement}</p>
-                    <p className="project-price">Price: ${project.price} | Expected Profit: ${project.expectedProfit}</p>
-                                  <p>
-                    <strong>Status:</strong>{" "}
+
+                    <p className="project-price">
+                    Price: ${project.price} | Expected Profit: ${project.expectedProfit}
+                  </p>
+
+               <p className="raised-info">
+                  💰 Raised: <strong>{getProjectRaised(project._id).toLocaleString()} ETB</strong>
+                </p>
+                <div className="progress-bar-bg">
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: `${Math.min((getProjectRaised(project._id) / project.price) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+                <p>
+                  {Math.round((getProjectRaised(project._id) / project.price) * 100)}% funded
+                </p>  
+                     <p><strong>Status:</strong>{" "}
                     <span className={`status-text ${project.status.toLowerCase()}`}>
                       {project.status}
                     </span>
@@ -478,16 +524,26 @@ try {
                       </div>
                     )}
 
-                    {role === "inventor" && project.inventorEmail === currentUser?.email && (
-                      <>
-                        <button
-                         className="edit-btn" onClick={() => { setEditingProject(project); setShowAddForm(true); }}>✏️ Edit Project</button>
+                         {role === "inventor" &&
+                      project.inventorEmail === currentUser?.email && (
+                        <>
+                          {/* ❌ Hide edit button if project is Approved */}
+                          {project.status !== "Approved" && (
+                            <button
+                              className="edit-btn"
+                              onClick={() => {
+                                setEditingProject(project);
+                                setShowAddForm(true);
+                              }}
+                            >
+                              ✏️ Edit Project
+                            </button>
+                          )}
 
                          
-                        <QuestionsList questions={project.questions || []} onAnswerUpdated={handleAnswerUpdated} />
-                        <AskQuestion projectId={project._id} onQuestionAdded={handleQuestionAdded} />
-                      </>
-                    )}
+                         
+                        </>
+                      )}
                   </div>
                 </article>
               ))}

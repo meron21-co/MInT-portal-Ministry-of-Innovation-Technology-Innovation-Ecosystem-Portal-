@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Auth.css";
 import { AuthContext } from "./AuthContext";
+import { useEffect } from "react";
 
 function Login() {
   const navigate = useNavigate();
@@ -16,6 +17,10 @@ function Login() {
   const [passwordError, setPasswordError] = useState("");
   const [submitError, setSubmitError] = useState("");
 
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState(0);
+
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
   const handleLogin = async (e) => {
@@ -23,6 +28,13 @@ function Login() {
     setEmailError("");
     setPasswordError("");
     setSubmitError("");
+
+        // 🔒 CHECK LOCK
+    const now = Date.now();
+const secondsLeft = Math.ceil((lockUntil - now) / 1000);
+
+
+
 
     let valid = true;
     if (!email) {
@@ -49,32 +61,50 @@ function Login() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+     const data = await res.json();
 
-     localStorage.setItem("token", data.token); // JWT from backend
-      localStorage.setItem("user", JSON.stringify(data.user));
+    
 
-      if (res.ok && data.user && data.token) {
-        // Update global auth state
-        login(data.user, data.token, rememberMe);
 
-        // Redirect based on role
-        switch (data.user.role) {
-          case "admin":
-            navigate("/admin");
-            break;
-          case "inventor":
-            navigate("/inventor");
-            break;
-          case "investor":
-            navigate("/investor");
-            break;
-          default:
-            setSubmitError("Unknown user role. Contact support.");
-            break;
+
+              if (res.ok) {
+                setAttempts(prev => 0);
+                setLockUntil(0);
+            // Update global auth state
+            login(data.user, data.token, rememberMe);
+
+            // SAVE ONLY ON SUCCESS
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            switch (data.user.role) {
+              case "admin":
+                navigate("/admin");
+                break;
+              case "inventor":
+                navigate("/inventor");
+                break;
+              case "investor":
+                navigate("/investor");
+                break;
+              default:
+                setSubmitError("Unknown user role. Contact support.");
+                break;
+            }
+          }
+      
+      else {
+        // ❌ FAILED LOGIN → increase attempts
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+
+        if (newAttempts >= 3) {
+        setLockUntil(Date.now() + 30 * 1000);
+        setSubmitError("Too many failed attempts. Lock started...");
+          setAttempts(0);
+        } else {
+          setSubmitError(data.message || "Login failed. Please try again.");
         }
-      } else {
-        setSubmitError(data.message || "Login failed. Please try again.");
       }
     } catch (err) {
       console.error("Login error:", err.message);
@@ -84,43 +114,83 @@ function Login() {
     }
   };
 
-  return (
-    <div className="auth-container">
-      <h2>Welcome Back!</h2>
-      <p>Please login to continue</p>
+useEffect(() => {
+  if (!lockUntil) return;
 
-      <form onSubmit={handleLogin} noValidate>
-        {submitError && <div className="error-message">{submitError}</div>}
+  const interval = setInterval(() => {
+    const diff = Math.ceil((lockUntil - Date.now()) / 1000);
 
-        <label htmlFor="email">Email</label>
+    if (diff <= 0) {
+      setLockUntil(0);
+      setTimeLeft(0);
+    } else {
+      setTimeLeft(diff);
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [lockUntil]);
+  
+
+  if (lockUntil && Date.now() < lockUntil) {
+  setSubmitError(`Please wait ${timeLeft} seconds`);
+  return;
+}
+
+
+return (
+  <div className="auth-container">
+    <h2>Welcome Back!</h2>
+    <p>Please login to continue</p>
+        
+    <form onSubmit={handleLogin} noValidate>
+      {submitError && <div className="error-message">{submitError}</div>}
+      {timeLeft > 0 && (
+        <p style={{ color: "red", fontWeight: "bold" }}>
+          Please wait: {timeLeft} seconds
+        </p>
+      )}
+
+      <label htmlFor="email">Email</label>
+      <input
+        type="email"
+        id="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => {
+          // ❌ block ` " '
+          const cleaned = e.target.value.replace(/[`"'']/g, "");
+          setEmail(cleaned);
+        }}
+        autoComplete="username"
+        aria-describedby="email-error"
+        aria-invalid={!!emailError}
+        required
+      />
+      {emailError && (
+        <p id="email-error" className="field-error">
+          {emailError}
+        </p>
+      )}
+
+      <label htmlFor="password">Password</label>
+      <div className="password-wrapper">
         <input
-          type="email"
-          id="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-          aria-describedby="email-error"
-          aria-invalid={!!emailError}
+          type={showPassword ? "text" : "password"}
+          id="password"
+          placeholder="Enter password"
+          value={password}
+          onChange={(e) => {
+            // ❌ block ` " '
+            const cleaned = e.target.value.replace(/[`"'']/g, "");
+            setPassword(cleaned);
+          }}
+          autoComplete="current-password"
+          aria-describedby="password-error"
+          aria-invalid={!!passwordError}
           required
         />
-        {emailError && <p id="email-error" className="field-error">{emailError}</p>}
-
-        <label htmlFor="password">Password</label>
-        <div className="password-wrapper">
-          <input
-            type={showPassword ? "text" : "password"}
-            id="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            aria-describedby="password-error"
-            aria-invalid={!!passwordError}
-            required
-          />
-         
-        </div>
+      </div>
         {passwordError && <p id="password-error" className="field-error">{passwordError}</p>}
 
         <div className="options-row">
@@ -133,12 +203,13 @@ function Login() {
             Remember Me
           </label>
 
-          <a href="/forgot-password" className="forgot-password-link">
-            Forgot Password?
-          </a>
+          <button type="button" className="forgot-password-link" onClick={() => navigate("/forgot-password")}>
+
+          Forgot Password?
+        </button>
         </div>
 
-        <button type="submit" className="auth-btn" disabled={loading}>
+        <button type="submit" className="auth-btn" disabled={loading || timeLeft > 0}>
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>

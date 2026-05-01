@@ -10,6 +10,9 @@ import Login from "./pages/login";
 import Register from "./pages/Register";
 import { AuthContext, AuthProvider } from "./pages/AuthContext";
 import PaymentSuccess from "./pages/Dashboard/PaymentSuccess";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 
 // ---------- Protected Route Component ----------
 function ProtectedRoute({ children, role }) {
@@ -40,7 +43,8 @@ function App() {
 
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             {/* Protected Routes */}
             <Route
               path="/inventor"

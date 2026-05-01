@@ -44,6 +44,7 @@ router.post("/:projectId/pay", authMiddleware, async (req, res) => {
 
     await Payment.create({
       tx_ref,
+      user: req.user._id,
       projects: [{
         projectId: project._id,
         projectName: project.title,
@@ -73,8 +74,9 @@ router.post("/cart-pay", authMiddleware, async (req, res) => {
   }
 
   try {
+   // ✅ Keep as ObjectId
     const validProjects = projects.map(p => ({
-      projectId: p.projectId,
+      projectId: p.projectId?._id || p.projectId,  // no .toString()
       projectName: p.projectName || "Project",
       amount: Number(p.amount || 0),
     }));
@@ -103,6 +105,7 @@ router.post("/cart-pay", authMiddleware, async (req, res) => {
 
     await Payment.create({
       tx_ref,
+      user: req.user._id,
       projects: validProjects,
       amount: totalAmount,
       email,
@@ -144,7 +147,13 @@ router.get("/verify/:tx_ref", async (req, res) => {
         .json({ status: "failed", message: "Record not found" });
     }
 
-    if (data.status === "success" && data.data.status === "success") {
+   const isPaid =
+  data.status === "success" &&
+  (data.data.status === "success" ||
+   data.data.status === "completed" ||
+   data.data.status === "paid");
+
+if (isPaid) {
 
       // update only once
       if (paymentRecord.status !== "success") {
@@ -154,18 +163,29 @@ router.get("/verify/:tx_ref", async (req, res) => {
         for (const item of paymentRecord.projects) {
           console.log(`Updating Project ${item.projectId} with +${item.amount}`);
 
-          await Project.findByIdAndUpdate(
-            item.projectId,
-            { $inc: { raised: item.amount } },
-            { new: true }
-          );
-        }
+          const projectId =
+        typeof item.projectId === "object"
+        ? item.projectId._id.toString()
+        : item.projectId.toString();
+
+      await Project.findByIdAndUpdate(
+        projectId,
+        { $inc: { raised: item.amount } },
+        { new: true }
+      );
+              }
       }
 
       // 🔥 IMPORTANT: fetch updated projects from DB
-      const updatedProjects = await Project.find({
-        _id: { $in: paymentRecord.projects.map(p => p.projectId) }
-      });
+    const projectIds = paymentRecord.projects.map(p =>
+  typeof p.projectId === "object"
+    ? p.projectId._id
+    : p.projectId
+);
+
+const updatedProjects = await Project.find({
+  _id: { $in: projectIds }
+});
 
       return res.json({
         status: "success",
@@ -194,6 +214,64 @@ router.get("/", authMiddleware, async (req, res) => {
     res.json(payments);  // must use res.json, NOT res.send(html)
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+router.get("/my-investments", authMiddleware, async (req, res) => {
+  try {
+    // ✅ Query by email instead of user ID (works for old AND new payments)
+    const payments = await Payment.find({
+      email: req.user.email,
+      status: "success",
+    }).populate("projects.projectId", "title expectedProfit price");
+
+    let totalPaid = 0;
+    const grouped = {};
+
+    payments.forEach((payment) => {
+      if (!Array.isArray(payment.projects)) return;
+
+      payment.projects.forEach((p) => {
+        if (!p) return;
+
+        const id =
+          p.projectId?._id?.toString() ||
+          p.projectId?.toString() ||
+          p.projectName;
+
+        const projectName =
+          p.projectId?.title ||
+          p.projectName ||
+          "Unknown Project";
+
+        const amount = Number(p.amount || 0);
+        totalPaid += amount;
+
+        if (!grouped[id]) {
+          grouped[id] = {
+             projectId: id,
+            projectName: p.projectId?.title || p.projectName || "Unknown Project",
+            expectedProfit: p.projectId?.expectedProfit || 0, 
+            price: p.projectId?.price || 0,                   
+            total: 0,
+          };
+        }
+
+        grouped[id].total += amount;
+      });
+    });
+
+    res.json({
+      totalPaid,
+      projects: Object.values(grouped),
+    });
+
+  } catch (err) {
+    console.error("My Investments Error:", err);
+    res.status(500).json({
+      message: "Server error while fetching investments",
+    });
   }
 });
 

@@ -724,6 +724,7 @@ body,
   padding: 1.5rem;
   text-align: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  
 }
 
 .dashboard-header h1 {
@@ -732,69 +733,209 @@ body,
 }
 
 /* ---------- Stats Section ---------- */
+/* =========================
+   STATS SECTION GRID
+========================= */
 .stats-section {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
   margin: 1rem;
+  padding: 1.5rem;
 }
 
+/* =========================
+   STAT CARD DESIGN
+========================= */
 .stat-card {
-  background-color: #fff;
-  flex: 1 1 200px;
-  max-width: 250px;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  text-align: center;
-  font-size: 1.1rem;
-  font-weight: 500;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid #eef2f7;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Hover effect */
 .stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
 
-/* ---------- Users Section ---------- */
-.users-section, .projects-section, .transactions-section {
-  background-color: #fff;
+/* Icon glow effect */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59,130,246,0.08), transparent 60%);
+  transform: rotate(25deg);
+}
+
+/* =========================
+   COLOR ACCENTS (optional upgrade)
+========================= */
+.stat-card:nth-child(1) { border-left: 5px solid #3b82f6; }
+.stat-card:nth-child(2) { border-left: 5px solid #6366f1; }
+.stat-card:nth-child(3) { border-left: 5px solid #22c55e; }
+.stat-card:nth-child(4) { border-left: 5px solid #ef4444; }
+.stat-card:nth-child(5) { border-left: 5px solid #f59e0b; }
+.stat-card:nth-child(6) { border-left: 5px solid #10b981; }
+.stat-card:nth-child(7) { border-left: 5px solid #06b6d4; }
+.stat-card:nth-child(8) { border-left: 5px solid #8b5cf6; }
+.stat-card:nth-child(9) { border-left: 5px solid #f59e9b; }
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 600px) {
+  .stats-section {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+}
+
+
+
+/* =========================
+   SECTION CARD STYLE
+========================= */
+.users-section,
+.projects-section,
+.transactions-section {
+  background: #ffffff;
   margin: 1rem;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.users-section h2, .projects-section h2, .transactions-section h2 {
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  color: #0d6efd;
-}
-
-.users-table, .transactions-table {
-  width: 100%;
-  border-collapse: collapse;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
   overflow-x: auto;
 }
 
-.users-table th, .users-table td,
-.transactions-table th, .transactions-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e0e0e0;
-  text-align: left;
-  font-size: 0.95rem;
-}
-
-.users-table th, .transactions-table th {
-  background-color: #f0f4ff;
-  color: #0d6efd;
+.users-section h2,
+.projects-section h2,
+.transactions-section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.6rem;
   font-weight: 600;
+  color: #1d4ed8;
+  letter-spacing: 0.3px;
 }
 
-.users-table tr:hover, .transactions-table tr:hover {
-  background-color: #f9f9f9;
+/* =========================
+   TABLE BASE STYLE
+========================= */
+.users-table,
+.transactions-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* HEADER */
+.users-table thead,
+.transactions-table thead {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+
+.users-table th,
+.transactions-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  border-bottom: 1px solid #e5e7eb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* BODY */
+.users-table td,
+.transactions-table td {
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s ease;
+}
+
+/* ROW HOVER */
+.users-table tbody tr,
+.transactions-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.users-table tbody tr:hover,
+.transactions-table tbody tr:hover {
+  background: #f8fafc;
+  transform: scale(1.002);
+}
+
+/* =========================
+   BUTTONS (VERY IMPORTANT)
+========================= */
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* DELETE BUTTON */
+button.delete {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button.delete:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* EDIT BUTTON */
+button.edit {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button.edit:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* =========================
+   EMPTY STATE
+========================= */
+.users-section p {
+  padding: 10px;
+  color: #6b7280;
+  font-style: italic;
 }
 
 /* ---------- Projects Section ---------- */
@@ -1878,7 +2019,7 @@ button:focus {
   font-size: 25px;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(90deg, #2863ed, #4f46e5);
+  background: #353b43;
   padding: 14px 20px;
   border-radius: 12px;
   margin: 20px auto;
@@ -2590,4 +2731,290 @@ table tr:hover {
   .admin-project-stats .metrics {
     grid-template-columns: 1fr;
   }
+}
+
+
+.raised-summary {
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: white;
+  padding: 20px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  align-items: center;
+   margin: 20px auto;
+
+}
+
+.summary-item {
+  justify-content: space-between;
+  font-size: 15px;
+  
+}
+
+.summary-item span {
+  opacity: 0.8;
+}
+
+.summary-item strong {
+  color: #00ffb3;
+  font-size: 18px;
+}
+
+
+
+
+
+
+
+.chart-section {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 420px;
+  margin: 20px auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  transition: all 0.3s ease;
+}
+
+.chart-section:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Title */
+.chart-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 15px;
+  letter-spacing: 0.3px;
+}
+
+/* Recharts wrapper cleanup */
+.chart-section .recharts-wrapper {
+  font-family: inherit;
+}
+
+/* Tooltip styling (Recharts override) */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+.recharts-default-tooltip {
+  background-color: #acb3c2 !important;
+  border-radius: 10px !important;
+  border: none !important;
+  color: #ffffff !important;
+  padding: 10px 12px !important;
+}
+
+/* Legend styling */
+.recharts-legend-wrapper {
+  margin-top: 10px !important;
+  font-size: 13px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+  .chart-section {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .chart-section h3 {
+    font-size: 16px;
+  }
+}
+
+
+/* ===========================
+   MY INVESTMENTS BOX
+=========================== */
+.my-investments-box {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  margin: 28px auto;
+  max-width: 860px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+  border: 1px solid #e5e7eb;
+}
+
+.my-investments-box h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+/* ===========================
+   TABLE HEADER
+=========================== */
+.investment-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  padding: 10px 20px;
+  margin-bottom: 8px;
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.investment-table-header span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.investment-table-header span:last-child {
+  text-align: right;
+}
+
+/* ===========================
+   INVESTMENT LIST
+=========================== */
+.investment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* ===========================
+   INVESTMENT ITEM
+=========================== */
+.investment-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  align-items: center;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.investment-item:hover {
+  background: #f0f9ff;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+/* ===========================
+   PROJECT NAME
+=========================== */
+.investment-item .project-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* ===========================
+   AMOUNT
+=========================== */
+.investment-item .amount {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0369a1;
+  text-align: right;
+}
+
+/* ===========================
+   TOTAL PAID BAR
+=========================== */
+.total-paid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-top: 8px;
+}
+
+.total-paid-left {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.total-paid-right strong {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 640px) {
+  .my-investments-box {
+    padding: 16px;
+    margin: 16px;
+  }
+
+  .investment-item {
+    padding: 12px 14px;
+  }
+
+  .investment-item .project-name {
+    font-size: 0.85rem;
+  }
+
+  .investment-item .amount {
+    font-size: 0.82rem;
+  }
+
+  .total-paid {
+    padding: 14px 16px;
+  }
+
+  .total-paid-right strong {
+    font-size: 1rem;
+  }
+}
+
+/* ===========================
+   INVESTMENT HINTS
+=========================== */
+.investment-hints {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+
+.hint-min {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f97316;
+  background: #fff7ed;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #fed7aa;
+}
+
+.hint-max {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #f0fdf4;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #bbf7d0;
 }

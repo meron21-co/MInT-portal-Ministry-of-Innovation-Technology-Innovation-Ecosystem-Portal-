@@ -123,6 +123,13 @@ router.put("/:id", upload.fields([{ name: "images" }, { name: "videos" }]), asyn
     const project = await Project.findById(id);
     if (!project) return res.status(404).json({ message: "Project not found" });
 
+    // 🔒 LOCK AFTER APPROVAL (IMPORTANT FIX)
+    if (project.status === "Approved") {
+      return res.status(403).json({
+        message: "Approved projects cannot be edited"
+      });
+    }
+
     const { title, description, price, problemStatement, expectedProfit, category } = req.body;
 
     if (title) project.title = title;
@@ -132,7 +139,6 @@ router.put("/:id", upload.fields([{ name: "images" }, { name: "videos" }]), asyn
     if (expectedProfit) project.expectedProfit = expectedProfit;
     if (category) project.category = category;
 
-    // ---------- FIX IMAGES ----------
     const existingImages = req.body.existingImages
       ? Array.isArray(req.body.existingImages)
         ? req.body.existingImages
@@ -145,8 +151,6 @@ router.put("/:id", upload.fields([{ name: "images" }, { name: "videos" }]), asyn
 
     project.images = [...existingImages, ...newImages];
 
-
-    // ---------- FIX VIDEOS ----------
     const existingVideos = req.body.existingVideos
       ? Array.isArray(req.body.existingVideos)
         ? req.body.existingVideos
@@ -393,6 +397,7 @@ router.put("/:projectId/approve-request/:investorId", async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
+
 
 
 export default router;

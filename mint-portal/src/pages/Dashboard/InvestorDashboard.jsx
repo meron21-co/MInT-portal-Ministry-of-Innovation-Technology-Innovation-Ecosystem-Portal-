@@ -41,6 +41,7 @@ const fetchProjects = async () => {
   try {
     const res = await fetch("http://localhost:5000/api/projects", {
       headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const data = await res.json();
@@ -58,14 +59,72 @@ const fetchProjects = async () => {
 };
 
 
-// 2. Load data on first visit
-useEffect(() => {
-  if (token) fetchProjects();
-}, [token]);
 
-// 3. Refresh when returning from the Chapa payment page (Tab Focus)
+const [payments, setPayments] = useState([]);
+
+
+const [myInvestments, setMyInvestments] = useState([]);
+const [totalPaid, setTotalPaid] = useState(0);
+
+const fetchPayments = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/api/payments", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setPayments(data || []);
+  } catch (err) {
+    console.error("Error fetching payments:", err);
+  }
+};
+
+
+
+const getProjectRaisedFromPayments = (projectId) => {
+  return payments.reduce((total, payment) => {
+    if (!Array.isArray(payment.projects)) return total;
+
+    payment.projects.forEach((proj) => {
+      const pid = String(proj.projectId?._id || proj.projectId);
+
+      if (
+        pid === String(projectId) &&
+        payment.status === "success"
+      ) {
+        total += Number(proj.amount || 0);
+      }
+    });
+
+    return total;
+  }, 0);
+};
+
+
+
+const fetchMyInvestments = async () => {
+  if (!token) return;
+  try {
+    const res = await fetch("http://localhost:5000/api/payments/my-investments", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setMyInvestments(data.projects || []);
+    setTotalPaid(data.totalPaid || 0);
+  } catch (err) {
+    console.error("Fetch Investments Error:", err);
+  }
+};
+
+// Call on load
 useEffect(() => {
-  const handleFocus = () => fetchProjects();
+  if (token) fetchMyInvestments();
+}, []);
+
+useEffect(() => {
+  const handleFocus = () => {
+    fetchMyInvestments();
+  };
+
   window.addEventListener("focus", handleFocus);
   return () => window.removeEventListener("focus", handleFocus);
 }, []);
@@ -73,36 +132,93 @@ useEffect(() => {
 
 
 
-// 4. Check if the URL says "success" and refresh
+// 2. Load data on first visit
 useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const txRef = urlParams.get('tx_ref');
+  if (token) fetchProjects();
+   fetchPayments(); 
+}, [token]);
 
-  if (txRef) {
-    fetch(`http://localhost:5000/api/payments/verify/${txRef}`)
-      .then(res => res.json())
-      .then((data) => {
-        console.log("VERIFY RESPONSE:", data);
+// 3. Refresh when returning from the Chapa payment page (Tab Focus)
+useEffect(() => {
+  const handleFocus = () => {
+    refreshAllData(); 
+     fetchMyInvestments();
+  };
 
-        // 🔥 FIX HERE
-        if (data.status === "success") {
-          Swal.fire("Success!", "Payment recorded and project funded.", "success");
+  window.addEventListener("focus", handleFocus);
+  return () => window.removeEventListener("focus", handleFocus);
+}, []);
 
-          // refresh from backend
-          fetchProjects();
+useEffect(() => {
+  const interval = setInterval(() => {
+    fetchProjects();
+     refreshAllData();
+  }, 5000); // refresh every 5 seconds
 
-          // clean URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-          console.log("Verification not ready yet...");
-        }
-      })
-      .catch(err => console.error("Verification error:", err));
-  }
+  return () => clearInterval(interval);
 }, []);
 
 
+// 4. Check if the URL says "success" and refresh
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const txRef = urlParams.get("tx_ref");
 
+  if (!txRef) return;
+
+  const verifyPayment = async () => {
+    let success = false;
+
+    for (let i = 0; i < 3; i++) {
+      await new Promise(res => setTimeout(res, 2000));
+
+      const res = await fetch(
+        `http://localhost:5000/api/payments/verify/${txRef}`
+      );
+      const data = await res.json();
+
+      console.log("VERIFY:", data);
+
+     if (data.status === "success") {
+       success = true; // 🔥 ADD THIS
+
+        await refreshAllData(); // 🔥 THIS FIXES TOTAL PAID
+        await fetchMyInvestments();  // 🔥 MUST
+        await fetchProjects();
+
+        Swal.fire("Success!", "Payment recorded", "success");
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+                if (success) {
+                    Swal.fire("Success!", "Payment successful", "success");
+
+                    // 🔥 REFRESH BOTH: The project list AND your summary
+                   await refreshAllData();
+              window.history.replaceState({}, document.title, window.location.pathname);
+
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }
+                };
+
+  verifyPayment();
+}, []);
+
+
+const refreshAllData = async () => {
+  await fetchProjects();
+  await fetchMyInvestments();
+};
+
+  // 3. Refresh when returning from Chapa (Tab Focus)
+  useEffect(() => {
+    window.addEventListener("focus", refreshAllData);
+    return () => window.removeEventListener("focus", refreshAllData);
+  }, []);
+
+ 
 
 const handleChapaPayment = async (projectId, amount) => {
  if (!amount || amount <= 5000) {
@@ -320,7 +436,7 @@ const addToCart = (project) => {
   const amount = parseFloat(supportAmounts[project._id]);
   
   // Calculate how much money is still needed
-  const totalRaised = project.raised || 0;
+let totalRaised = getProjectRaisedFromPayments(project._id);
   const goalAmount = project.price; // This is the total price of the project
   
   const remainingNeeded = goalAmount - totalRaised;
@@ -463,9 +579,63 @@ if (!questionText) return;
   return (
     <div className="investors">
     <div className="/investor">
-      <h1>Investor Dashboard</h1>
+      <h1 ></h1>
+    
 
+ {/* ✅ MY INVESTMENTS SUMMARY */}
+<div className="my-investments-box">
+  <h2>💰 My Investments</h2>
+
+  {myInvestments.length === 0 ? (
+    <div className="empty-investments">
+      <span className="empty-icon">📭</span>
+      <p>No investments yet.</p>
+      <small>Start investing in projects below!</small>
+    </div>
+  ) : (
+    <>
+      {/* ===== TABLE HEADER ===== */}
+      <div className="investment-table-header">
+        <span>Project</span>
+        <span>Invested</span>
+        
+      </div>
+
+      {/* ===== INVESTMENT LIST ===== */}
+      <div className="investment-list">
+        {myInvestments.map((item, index) => {
+         
+
+          
+
+          return (
+            <div key={index} className="investment-item">
+              <span className="project-name">📁 {item.projectName}</span>
+              <span className="amount">{formatCurrency(item.total)}</span>
+             
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ===== TOTAL PAID ===== */}
+      <div className="total-paid">
+        <div className="total-paid-left">
+          🧾 Total Invested
+        </div>
+        <div className="total-paid-right">
+          <strong>{formatCurrency(totalPaid)}</strong>
+        </div>
+      </div>
+    </>
+  )}
 </div>
+      
+          
+  </div>
+
+
+
      <div className="cart-box">
   <h2>🛒 Cart ({cart.length})</h2>
 
@@ -514,7 +684,11 @@ if (!questionText) return;
 
       {/* Projects List */}
       <div className="project-list">
-        {filteredProjects.map((project) => (
+        {filteredProjects.map((project) => {
+  const raised = getProjectRaisedFromPayments(project._id);
+
+  return (
+          
           <div key={project._id} className="project-card">
             <h2>{project.title}</h2>
             <p>Category: {project.category}</p>
@@ -560,38 +734,7 @@ if (!questionText) return;
                     {favorites.includes(project._id) ? <FaStar /> : <FaRegStar />}
                   </button>
 
-                  {/* Existing investment request buttons */}
-                  {(() => {
-                    const myRequest = project.investmentRequests?.find(
-                      (r) =>
-                        r.investor?.toString() === userId ||
-                        r.investor?._id?.toString() === userId
-                    );
 
-                    if (project.status === "Sold") {
-                      return (
-                        <button disabled>
-                          {project.soldTo?._id === userId ? "Your Project ✅" : "Sold"}
-                        </button>
-                      );
-                    }
-
-                    if (myRequest) {
-                      return (
-                        <button disabled>
-                          {myRequest.status === "Pending" && "Request Pending"}
-                          {myRequest.status === "Approved" && "Approved ✅"}
-                          {myRequest.status === "Rejected" && "Rejected ❌"}
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <button onClick={() => handleRequestInvestment(project._id)}>
-                        Request to Invest
-                      </button>
-                    );
-                  })()}
 
                   {/* ✅ Add this button */}
                   <button className="btn-view-details" onClick={() => setSelectedProject(project)}>
@@ -605,20 +748,21 @@ if (!questionText) return;
                {/* Progress Info */}
                  <div className="funding-status">
               <div className="status-labels">
-                <span>Raised: {formatCurrency(project.raised || 0)}</span>
+                
+                <span>Raised: {formatCurrency(raised)}</span>
                 <span className="goal-text">Goal: {formatCurrency(project.price)}</span>
               </div>
               <div className="progress-bar-bg">
                 <div
                   className="progress-bar-fill"
                   style={{
-                    width: `${Math.min(((project.raised || 0) / project.price) * 100, 100)}%`,
+                   width: `${(raised / project.price) * 100}%`,
                   }}
                 ></div>
               </div>
 
               <p className="remaining-needed">
-                Remaining: <strong>{formatCurrency(project.price - (project.raised || 0))} ETB</strong>
+                Remaining: <strong>{project.price - raised} ETB</strong>
               </p>
             </div>
             <div className="amount-input-container">
@@ -630,7 +774,7 @@ if (!questionText) return;
                 value={supportAmounts[project._id] || ""}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const remaining = project.price - (project.raised || 0);
+                 const remaining = project.price - raised;
                   // Prevent typing more than what's needed
                   if (val > remaining) {
                     setSupportAmounts(prev => ({ ...prev, [project._id]: remaining }));
@@ -639,22 +783,24 @@ if (!questionText) return;
                   }
                 }}
               />
+             
 
 
             </div>
+            
 
           <div className="investment-button-group">
               <button 
                 className="btn-pay-now"
-                disabled={project.status !== "Approved" || (project.raised >= project.price)}
+               disabled={project.status !== "Approved" || (raised >= project.price)}
                 onClick={() => handleChapaPayment(project._id, supportAmounts[project._id])}
               >
-                {project.raised >= project.price ? "Fully Funded" : "Invest Now"}
+                {raised >= project.price ? "Fully Funded" : "Invest Now"}
               </button>
 
               <button 
                 className="btn-add-cart"
-                disabled={project.status !== "Approved" || (project.raised >= project.price)}
+                disabled={project.status !== "Approved" || (raised >= project.price)}
                 onClick={() => addToCart(project)}
               >
                 <FaShoppingCart />
@@ -671,7 +817,8 @@ if (!questionText) return;
 
             </div>
          
-        ))}
+          );
+})}
       </div>
 
 
@@ -715,7 +862,15 @@ if (!questionText) return;
                 <img key={idx} src={img.startsWith("http") ? img : `http://localhost:5000${img}`} alt="" width="300" />
               ))}
               {(selectedProject.videos || []).map((vid, idx) => (
-                <video key={idx} src={vid.startsWith("http") ? vid : `http://localhost:5000${vid}`} controls width="300" />
+                <video
+              key={idx}
+              src={vid.startsWith("http") ? vid : `http://localhost:5000${vid}`}
+              controls
+              controlsList="nodownload noplaybackrate noremoteplayback"
+              disablePictureInPicture
+              onContextMenu={(e) => e.preventDefault()}
+              width="200"
+            />
               ))}
             </div>
 
@@ -732,6 +887,7 @@ if (!questionText) return;
         </div>
       )}
     </div>
+    
   );
 }
 

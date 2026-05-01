@@ -1,9 +1,20 @@
+import dotenv from "dotenv";
+dotenv.config();
+console.log("EMAIL_USER:", process.env.EMAIL_USER);
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
+
+
 
 // Route imports
 import authRoutes from "./routes/auth.js";
@@ -15,13 +26,8 @@ import paymentRoutes from "./routes/payment.js";
 
 
 
-// Config
-dotenv.config();
-const app = express();
 
-// ESM fix for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const app = express();
 
 // Middleware
 app.use(cors()); // In production, configure with { origin: "http://yourfrontend.com" }
@@ -56,3 +62,4 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+

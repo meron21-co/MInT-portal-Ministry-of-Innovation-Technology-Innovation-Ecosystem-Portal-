@@ -1,10 +1,32 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Project from "../models/Project.js";
 import authMiddleware from "../middleware/authMiddleware.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+console.log("EMAIL_USER =", process.env.EMAIL_USER);
+console.log("EMAIL_PASS =", process.env.EMAIL_PASS);
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.log("SMTP ERROR:", error);
+  } else {
+    console.log("SMTP READY ✔ Email server is working");
+  }
+});
 const router = express.Router();
 
 // ----------------- Get user's projects -----------------
@@ -26,6 +48,8 @@ router.post("/register", async (req, res) => {
       email,
       password,
       role,
+      nationalId,
+      passportNumber,
       // Inventor fields
       project,
       skills,
@@ -47,9 +71,15 @@ router.post("/register", async (req, res) => {
         message: "Name, email, password, and role are required",
       });
     }
+    if (!nationalId && !passportNumber) {
+  return res.status(400).json({
+    success: false,
+    message: "National ID or Passport number required"
+  });
+}
 
     const normalizedRole = role.toLowerCase();
-    if (!["inventor", "investor", "admin"].includes(normalizedRole)) {
+    if (!["inventor", "investor",].includes(normalizedRole)) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid role" });
@@ -68,6 +98,8 @@ router.post("/register", async (req, res) => {
       email,
       password, // ❌ Do not hash here, schema hook will hash it
       role: normalizedRole,
+      nationalId: nationalId || "",      
+      passportNumber: passportNumber || ""
     };
 
     if (normalizedRole === "inventor") {
@@ -203,6 +235,77 @@ router.get("/investors", async (req, res) => {
     console.error("Error fetching investors:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
+});
+
+
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+ if (!user) {
+  return res.json({ message: "If email exists, reset link sent" });
+}
+
+  const token = crypto.randomBytes(32).toString("hex");
+
+  user.resetToken = token;
+  user.resetTokenExpire = Date.now() + 1000 * 60 * 60;
+  await user.save();
+
+  const resetLink = `http://localhost:3000/reset-password/${token}`;
+
+  try {
+ await transporter.sendMail({
+  from: process.env.EMAIL_USER,
+  to: email,
+  subject: "Password Reset",
+  html: `
+    <h3>Password Reset</h3>
+    <p>Click below to reset your password:</p>
+    <a href="${resetLink}">${resetLink}</a>
+  `,
+});
+
+    res.json({ message: "Reset link sent to email" });
+
+    
+} catch (error) {
+  console.error("🔥 EMAIL ERROR FULL:", error);
+  console.error("🔥 EMAIL MESSAGE:", error.message);
+
+  res.status(500).json({
+    message: "Email not sent",
+    error: error.message,
+  });
+}
+
+
+});
+
+
+
+
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  const user = await User.findOne({
+    resetToken: token,
+    resetTokenExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired token" });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+user.password = hashedPassword;
+  user.resetToken = undefined;
+  user.resetTokenExpire = undefined;
+
+  await user.save();
+
+  res.json({ message: "Password reset successful" });
 });
 
 export default router;

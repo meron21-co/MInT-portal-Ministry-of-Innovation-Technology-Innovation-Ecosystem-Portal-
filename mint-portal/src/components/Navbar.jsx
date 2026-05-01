@@ -103,6 +103,9 @@ const handleProfileUpload = async (e) => {
 
   const getRoleLabel = () => user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "";
 
+const isLoggedIn = !!user;
+const role = user?.role;
+
   return (
     <nav className="navbar">
       {/* Logo */}
@@ -123,147 +126,112 @@ const handleProfileUpload = async (e) => {
       </div>
 
       {/* Nav Menu */}
-      <ul className={`nav-menu ${menuOpen ? "active" : ""}`}>
-        <li className="nav-item">
-          <HashLink smooth to="/#home" className="nav-links" onClick={() => setMenuOpen(false)}>Home</HashLink>
-        </li>
-        <li className="nav-item">
-          <Link to={dashboardLink()} className="nav-links" onClick={() => setMenuOpen(false)}>Dashboard</Link>
-        </li>
-        <li className="nav-item">
-          <HashLink smooth to="/#about-us" className="nav-links" onClick={() => setMenuOpen(false)}>About Us</HashLink>
-        </li>
-        <li className="nav-item">
-          <HashLink smooth to="/#footer" className="nav-links" onClick={() => setMenuOpen(false)}>Contact</HashLink>
-        </li>
+     <ul className={`nav-menu ${menuOpen ? "active" : ""}`}>
 
+  {/* 🔹 ONLY for NOT logged-in users */}
+  {!user && (
+    <>
+      <li className="nav-item">
+        <HashLink smooth to="/#home" className="nav-links" onClick={() => setMenuOpen(false)}>Home</HashLink>
+      </li>
+      <li className="nav-item">
+        <HashLink smooth to="/#about-us" className="nav-links" onClick={() => setMenuOpen(false)}>About Us</HashLink>
+      </li>
+      <li className="nav-item">
+        <HashLink smooth to="/#footer" className="nav-links" onClick={() => setMenuOpen(false)}>Contact</HashLink>
+      </li>
 
+      <li className="nav-item">
+        <Link to="/login"><button className="btn-log">Login</button></Link>
+      </li>
+      <li className="nav-item">
+        <Link to="/register"><button className="btn-register">Register</button></Link>
+      </li>
+    </>
+  )}
 
-
-        {/* Login/Register or Settings */}
-        {!user ? (
-          <>
-            <li className="nav-item">
-              <Link to="/login"><button className="btn-log">Login</button></Link>
-            </li>
-            <li className="nav-item">
-              <Link to="/register"><button className="btn-register">Register</button></Link>
-            </li>
-          </>
-        ) : (
-          <>
-            <li className="nav-item">
-              {/* Settings Button */}
-              <button className="btn-settings" onClick={toggleSettings}>
-                ⚙️ Settings
-              </button>
-            </li>
-            <li className="nav-item profile-container">
-              {/* Minimal Profile Box */}
-              <div className="profile-box">
-
-               <img
-   src={
-    user.profile
-      ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
-        ? user.profile
-        : `${API_URL}${user.profile}?t=${Date.now()}`
-      : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-  }
-  alt="Profile"
-  className="profile-img"
-  onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-/>
-                <div className="profile-text">
-                  <span className="profile-name">{getDisplayName()}</span>
-                  <span className="profile-role">{getRoleLabel()}</span>
-                </div>
-              </div>
-            </li>
-          </>
-        )}
-      </ul>
-
-      {/* Settings Dropdown Panel */}
-    {settingsOpen && user && (
-  <div className="settings-panel">
-    {/* Profile Preview */}
-    <div className="settings-profile">
-      <div className="profile-img-box">
+  {/* 🔹 ONLY PROFILE when logged in */}
+  {user && (
+    <li className="nav-item profile-container">
+      <div className="profile-box" onClick={() => setSettingsOpen(prev => !prev)}>
         <img
+          src={
+            user.profile
+              ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
+                ? user.profile
+                : `${API_URL}${user.profile}?t=${Date.now()}`
+              : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+          }
+          className="profile-img"
+        />
+
+        <div className="profile-text">
+          <span className="profile-name">{getDisplayName()}</span>
+          <span className="profile-role">{getRoleLabel()}</span>
+        </div>
+
+        <span className="profile-arrow">⌄</span>
+      </div>
+
+      {settingsOpen && (
+        <div className="profile-panel">
+          <div className="profile-panel-header">
+            <img
+              src={
+                user.profile
+                  ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
+                    ? user.profile
+                    : `${API_URL}${user.profile}?t=${Date.now()}`
+                  : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+              }
+              className="profile-img-preview"
+            />
+
+            <div>
+              <h4>{getDisplayName()}</h4>
+              <span>{getRoleLabel()}</span>
+            </div>
+          </div>
+
+          <label className="upload-btn">
+            Change Photo
+            <input type="file" accept="image/*" onChange={handleProfileUpload} hidden />
+          </label>
+
+          <input
+            type="text"
+            value={user.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+          />
+
+          <input
+            type="email"
+            value={user.email || ""}
+            onChange={(e) => handleEmailChange(e.target.value)}
+          />
+
+          <button className="btn-save" onClick={saveSettingsAndClose}>
+            💾 Save Changes
+          </button>
+
+          <button
+            className="btn-logout"
+            onClick={() => {
+              logout();
+              setSettingsOpen(false);
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      )}
+    </li>
+  )}
+
+</ul>
+
   
-   src={
-    user.profile
-      ? user.profile.startsWith("blob:") || user.profile.startsWith("http")
-        ? user.profile
-        : `${API_URL}${user.profile}?t=${Date.now()}`
-      : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-  }
-  alt="Profile"
-  className="profile-img-preview"
-    onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-/>
-
-        <label htmlFor="profile-upload" className="profile-upload-btn">
-          Change Photo
-        </label>
-        <input
-          id="profile-upload"
-          type="file"
-          accept="image/*"
-          onChange={handleProfileUpload}
-          hidden
-        />
-      </div>
-      <div className="profile-name-role">
-        <h4>{getDisplayName()}</h4>
-        <span>{getRoleLabel()}</span>
-      </div>
-    </div>
-
-    {/* Editable Fields */}
-    <div className="settings-fields">
-      <div className="settings-item">
-        <label>Name</label>
-        <input
-          type="text"
-          value={user.name}
-          onChange={e => handleNameChange(e.target.value)}
-        />
-      </div>
-
-      <div className="settings-item">
-        <label>Email</label>
-        <input
-          type="email"
-          value={user.email || ""}
-          onChange={e => handleEmailChange(e.target.value)}
-        />
-      </div>
-    </div>
-
-    {/* Theme & Logout */}
-    <div className="settings-actions">
-      <button className="btn-theme" onClick={toggleTheme}>
-        {theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
-      </button>
-     
-    {/* Save & Close Button */}
-  <button className="btn-theme" onClick={saveSettingsAndClose}>
-    💾 Save & Close
-  </button>
-      <button
-        className="btn-logout"
-        onClick={() => {
-          logout();
-          setSettingsOpen(false);
-        }}
-      >
-        Logout
-      </button>
-    </div>
-  </div>
-)}
+   
 
 
     </nav>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+
 import "./Dashboard.css";
 
 function AdminDashboard() {
@@ -87,10 +89,30 @@ const [payments, setPayments] = useState([]);
       setProjects(projectsData);
       setPayments(paymentsData || []);
 
-      setStats({
-        totalUsers: inventorsData.length + investorsData.length,
-        totalProjects: projectsData.length,
-      });
+const approved = projectsData.filter((p) => p.status === "Approved").length;
+const rejected = projectsData.filter((p) => p.status === "Rejected").length;
+const pending = projectsData.filter(
+  (p) => !p.status || p.status === "Pending"
+).length;
+
+const totalRevenue = projectsData
+  .filter((p) => p.status === "Approved")
+  .reduce((sum, p) => sum + Number(p.price || 0), 0);
+
+const approvalRate =
+  projectsData.length > 0
+    ? (approved / projectsData.length) * 100
+    : 0;
+
+setStats({
+  totalUsers: inventorsData.length + investorsData.length,
+  totalProjects: projectsData.length,
+  approvedProjects: approved,
+  rejectedProjects: rejected,
+  pendingProjects: pending,
+  totalRevenue: Number(totalRevenue.toFixed(2)),
+  approvalRate: Number(approvalRate.toFixed(1)),
+});
     } catch (err) {
       console.error("Error fetching all data:", err);
     }
@@ -321,10 +343,10 @@ payments.forEach((payment) => {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>Admin Dashboard</h1>
+        {/* <h1>Admin Dashboard</h1>
         <button onClick={() => setShowAddUser(!showAddUser)}>
           {showAddUser ? "Cancel Add User" : "Add New User"}
-        </button>
+        </button> */}
       </header>
 
       {/* Add User Form */}
@@ -395,13 +417,51 @@ payments.forEach((payment) => {
         </section>
       )}
 
-      {/* Stats */}
-      <section className="stats-section">
-        <div className="stat-card">👤 Total Users: {stats.totalUsers}</div>
-        <div className="stat-card">📂 Total Projects: {stats.totalProjects}</div>
-        <div className="stat-card">🛠️ Inventors: {inventors.length}</div>
-        <div className="stat-card">💼 Investors: {investors.length}</div>
-      </section>
+   {/* Stats */}
+<section className="stats-section">
+  <div className="stat-card">👤 Total Users: {stats.totalUsers}</div>
+  <div className="stat-card">📂 Total Projects: {stats.totalProjects}</div>
+
+  
+
+
+ <div className="stat-card">
+  💰 Revenue: {Number(stats.totalRevenue).toLocaleString()} ETB
+</div>
+
+ <div className="stat-card">
+  📊 Approval Rate: {Number(stats.approvalRate || 0).toFixed(1)}%
+</div>
+
+  <div className="stat-card">🛠️ Inventors: {inventors.length}</div>
+  <div className="stat-card">💼 Investors: {investors.length}</div>
+</section>
+
+<section className="chart-section">
+  <h3>📊 Project Status Chart</h3>
+
+  <PieChart width={350} height={300}>
+    <Pie
+      data={[
+        { name: "Approved", value: stats.approvedProjects },
+        { name: "Rejected", value: stats.rejectedProjects },
+        { name: "Pending", value: stats.pendingProjects },
+      ]}
+      dataKey="value"
+      cx="50%"
+      cy="50%"
+      outerRadius={100}
+      label
+    >
+      <Cell fill="#4caf50" />
+      <Cell fill="#f44336" />
+      <Cell fill="#ff9800" />
+    </Pie>
+
+    <Tooltip />
+    <Legend />
+  </PieChart>
+</section>
 
       {/* Users Sections */}
       <section className="users-section">
@@ -411,46 +471,54 @@ payments.forEach((payment) => {
         ) : (
           <table className="users-table">
             <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Project</th>
-                <th>Skills</th>
-                <th>Experience</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventors.map((u) => (
-                <tr key={u._id}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.project || "-"}</td>
-                  <td>{u.skills || "-"}</td>
-                  <td>{u.experience || "-"}</td>
-                  <td>
-                 <div className="button-group">
-                 <button
-          className="delete"
-          onClick={() => handleDeleteUser(u._id, "inventor")}
->
-                    Delete
-                  </button>
-                  <button
-                    className="edit"
-                    onClick={() => {
-                      setEditingUser(u);
-                      setShowEditForm(true);
-                    }}
-                  >
-                    Edit
-                  </button>
-                </div>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Project</th>
+              <th>Skills</th>
+              <th>Experience</th>
+              <th>National ID</th>
+              <th>Passport</th>
+              <th>Portfolio</th>
+              <th>Patent</th>
+              <th>Team</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+               <tbody>
+            {inventors.map((u) => (
+              <tr key={u._id}>
+                <td>{u.name}</td>
+                <td>{u.email}</td>
+                <td>{u.project || "-"}</td>
+                <td>{u.skills || "-"}</td>
+                <td>{u.experience || "-"}</td>
 
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                <td>{u.nationalId || "-"}</td>
+                <td>{u.passportNumber || "-"}</td>
+                <td>{u.portfolio || "-"}</td>
+                <td>{u.patentStatus || "-"}</td>
+                <td>{u.teamSize || "-"}</td>
+
+                <td>
+                  <div className="button-group">
+                    <button className="delete" onClick={() => handleDeleteUser(u._id, "inventor")}>
+                      Delete
+                    </button>
+                    <button
+                      className="edit"
+                      onClick={() => {
+                        setEditingUser(u);
+                        setShowEditForm(true);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
           </table>
         )}
       </section>
@@ -461,43 +529,52 @@ payments.forEach((payment) => {
           <p>No investors found.</p>
         ) : (
           <table className="users-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Company</th>
-                <th>Budget</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+           <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Company</th>
+              <th>Budget</th>
+              <th>Industry</th>
+              <th>Investment Type</th>
+              <th>National ID</th>
+              <th>Passport</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
 
 
 
-
-            <tbody>             
+            <tbody>
               {investors.map((u) => (
                 <tr key={u._id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{u.company || "-"}</td>
                   <td>{u.budget || 0}</td>
-                 <td>
-               <div className="button-group">
 
-              <button className="delete" onClick={() => handleDeleteUser(u._id, "inventor")}>
-                Delete
-              </button>
-              <button
-                className="edit"
-                onClick={() => {
-                  setEditingUser(u);
-                  setShowEditForm(true);
-                }}
-              >
-                Edit
-              </button>
-            </div>
-                </td>
+                  <td>{u.industryFocus || "-"}</td>
+                  <td>{u.investmentType || "-"}</td>
+
+                  <td>{u.nationalId || "-"}</td>
+                  <td>{u.passportNumber || "-"}</td>
+
+                  <td>
+                    <div className="button-group">
+                      <button className="delete" onClick={() => handleDeleteUser(u._id, "investor")}>
+                        Delete
+                      </button>
+                      <button
+                        className="edit"
+                        onClick={() => {
+                          setEditingUser(u);
+                          setShowEditForm(true);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -505,77 +582,178 @@ payments.forEach((payment) => {
           </table>
         )}
       </section>
-      {/* Edit User Form */}
+    
+
+{/* Edit User Form */}
 {showEditForm && editingUser && (
   <section className="edit-user-section">
     <h2>Edit User</h2>
+
+    {/* BASIC INFO */}
     <input
       placeholder="Full Name"
-      value={editingUser.name}
-      onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+      value={editingUser.name || ""}
+      onChange={(e) =>
+        setEditingUser({ ...editingUser, name: e.target.value })
+      }
     />
+
     <input
       placeholder="Email"
-      value={editingUser.email}
-      onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+      value={editingUser.email || ""}
+      onChange={(e) =>
+        setEditingUser({ ...editingUser, email: e.target.value })
+      }
     />
+
     <select
-      value={editingUser.role}
-      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+      value={editingUser.role || ""}
+      onChange={(e) =>
+        setEditingUser({ ...editingUser, role: e.target.value })
+      }
     >
       <option value="inventor">Inventor</option>
       <option value="investor">Investor</option>
     </select>
 
+    {/* INVENTOR FIELDS */}
     {editingUser.role === "inventor" && (
       <>
         <input
           placeholder="Project Summary"
           value={editingUser.project || ""}
-          onChange={(e) => setEditingUser({ ...editingUser, project: e.target.value })}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, project: e.target.value })
+          }
         />
+
         <input
           placeholder="Skills"
           value={editingUser.skills || ""}
-          onChange={(e) => setEditingUser({ ...editingUser, skills: e.target.value })}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, skills: e.target.value })
+          }
         />
+
         <input
           placeholder="Experience"
           value={editingUser.experience || ""}
-          onChange={(e) => setEditingUser({ ...editingUser, experience: e.target.value })}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, experience: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Portfolio"
+          value={editingUser.portfolio || ""}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, portfolio: e.target.value })
+          }
+        />
+
+        <select
+          value={editingUser.patentStatus || ""}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, patentStatus: e.target.value })
+          }
+        >
+          <option value="">Patent Status</option>
+          <option value="not-applied">Not Applied</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+        </select>
+
+        <input
+          type="number"
+          placeholder="Team Size"
+          value={editingUser.teamSize || ""}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, teamSize: e.target.value })
+          }
         />
       </>
     )}
 
+    {/* INVESTOR FIELDS */}
     {editingUser.role === "investor" && (
       <>
         <input
           placeholder="Company Name"
           value={editingUser.company || ""}
-          onChange={(e) => setEditingUser({ ...editingUser, company: e.target.value })}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, company: e.target.value })
+          }
         />
+
         <input
-          placeholder="Budget"
           type="number"
+          placeholder="Budget"
           value={editingUser.budget || ""}
-          onChange={(e) => setEditingUser({ ...editingUser, budget: e.target.value })}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, budget: e.target.value })
+          }
         />
+
+        <input
+          placeholder="Industry Focus"
+          value={editingUser.industryFocus || ""}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, industryFocus: e.target.value })
+          }
+        />
+
+        <select
+          value={editingUser.investmentType || ""}
+          onChange={(e) =>
+            setEditingUser({ ...editingUser, investmentType: e.target.value })
+          }
+        >
+          <option value="">Investment Type</option>
+          <option value="equity">Equity</option>
+          <option value="loan">Loan</option>
+          <option value="grant">Grant</option>
+        </select>
       </>
     )}
 
-              <button
-                onClick={() => {
-                  handleEditUser(editingUser._id, editingUser.role, editingUser);
-                  setShowEditForm(false);
-                  setEditingUser(null);
-                }}
-              >
-                Save Changes
-              </button>
-              <button onClick={() => setShowEditForm(false)}>Cancel</button>
-            </section>
-          )}
+    {/* IDENTITY FIELDS (BOTH ROLES) */}
+    <input
+      placeholder="National ID"
+      value={editingUser.nationalId || ""}
+      onChange={(e) =>
+        setEditingUser({ ...editingUser, nationalId: e.target.value })
+      }
+    />
 
+    <input
+      placeholder="Passport Number"
+      value={editingUser.passportNumber || ""}
+      onChange={(e) =>
+        setEditingUser({ ...editingUser, passportNumber: e.target.value })
+      }
+    />
+
+    {/* ACTIONS */}
+    <button
+      onClick={() => {
+        handleEditUser(editingUser._id, editingUser.role, editingUser);
+        setShowEditForm(false);
+        setEditingUser(null);
+      }}
+    >
+      Save Changes
+    </button>
+
+    <button
+      onClick={() => {
+        setShowEditForm(false);
+        setEditingUser(null);
+      }}
+    >
+      Cancel
+    </button>
+  </section>
+)}
 
 
 
