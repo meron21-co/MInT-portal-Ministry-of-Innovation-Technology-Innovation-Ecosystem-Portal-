@@ -20,9 +20,26 @@ const userSchema = new mongoose.Schema({
   budget: { type: Number, default: 0 },
   industryFocus: { type: String, default: "" },
   investmentType: { type: String, enum: ["equity", "loan", "grant"], default: "equity" },
-profile: {
-  type: String,
-  default: "",
+        profile: {
+          type: String,
+          default: "",
+        },
+
+
+
+        
+        isApproved: {
+          type: Boolean,
+          default: false  // all new users start as unapproved
+        },
+        approvalStatus: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending"
+        },
+        rejectionReason: {
+          type: String,
+  default: ""
 },
 
   // Optional reference to projects
@@ -44,5 +61,6 @@ userSchema.methods.toJSON = function () {
   delete obj.password; // remove password field
   return obj;
 };
+
 
 export default mongoose.model("User", userSchema);

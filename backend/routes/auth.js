@@ -160,22 +160,25 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ success: false, message: "Invalid credentials" });
+  
+          const user = await User.findOne({ email });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ success: false, message: "Invalid credentials" });
+          if (!user || !bcrypt.compareSync(password, user.password)) {
+            return res.status(401).json({ message: "Invalid credentials" });
+          }
 
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not defined in .env!");
-      return res.status(500).json({ success: false, message: "Server configuration error" });
-    }
+          // ✅ Block if not approved (skip check for admin)
+          if (user.role !== "admin" && user.approvalStatus !== "approved") {
+            return res.status(403).json({
+              message: user.approvalStatus === "rejected"
+                ? `Your account was rejected. Reason: ${user.rejectionReason}`
+                : "Your account is pending admin approval.",
+              approvalStatus: user.approvalStatus
+            });
+          }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+          const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
+          res.json({ token, user });
 
     // Safe user object
     const userSafe = {

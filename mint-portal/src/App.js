@@ -12,7 +12,7 @@ import { AuthContext, AuthProvider } from "./pages/AuthContext";
 import PaymentSuccess from "./pages/Dashboard/PaymentSuccess";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
+import PendingApproval from "./pages/PendingApproval";
 
 // ---------- Protected Route Component ----------
 function ProtectedRoute({ children, role }) {
@@ -45,6 +45,8 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+           <Route path="/pending-approval" element={<PendingApproval />} />
+
             {/* Protected Routes */}
             <Route
               path="/inventor"

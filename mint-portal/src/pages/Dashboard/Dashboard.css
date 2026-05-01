@@ -2289,8 +2289,7 @@ button:focus {
     text-align: left;
     position: relative;
     border: none;
-    display: flex;
-    justify-content: space-between;
+   
   }
 
   .payments-section td::before {
@@ -3017,4 +3016,14 @@ table tr:hover {
   padding: 3px 10px;
   border-radius: 20px;
   border: 1px solid #bbf7d0;
+}
+
+.charts-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.chart-section {
+  flex: 1 1 350px;
 }

@@ -1,127 +1,112 @@
-🌿 Mint Portal
+# MINT-portal
 
-Mint Portal is a modern web-based financial management system built with React. It is designed to handle investor operations, payments, invoices, and transaction tracking in a clean, fast, and responsive dashboard interface.
+> Explore and invest in projects — seamlessly.
 
-The system supports role-based workflows (Investor/Admin) and provides real-time financial insights through a structured UI.
+![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-000000?style=flat&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-🚀 Key Features
-💼 Investor Dashboard
-View investments and transaction history
-Track payments in real time
-View detailed invoice records
-Wallet-style balance overview
-🧾 Invoice System
-Auto-generated invoice numbers (e.g. INV-XXXXXX)
-Clean formatted currency display
-Payment summaries with structured breakdown
-Download-ready invoice UI
-💳 Payment & Transactions
-Secure payment tracking from backend
-Real-time transaction updates
-Payment status monitoring (success/pending/failed)
-⭐ Interactive UI Features
-SweetAlert2 notifications for actions
-Icon-based UI (React Icons)
-Responsive and mobile-friendly design
-Clean modern dashboard layout
-🔐 Role-Based System (if enabled in backend)
-Investor view
-Admin management view
-Conditional rendering based on user role
-🧠 Tech Stack
+---
 
-Frontend
+## About
 
-React.js (Create React App)
-JavaScript (ES6+)
-CSS3 (custom styling)
-React Icons
-SweetAlert2
+MINT is a full-stack web platform for exploring and investing in projects. It features a clean user-facing interface and a powerful admin dashboard for managing projects, users, and payments — all powered by a REST API backend.
 
-Integration
+---
 
-REST API (backend connection)
-JSON-based data handling
-📁 Project Structure
-mint-portal/
-├── public/
-├── src/
-│   ├── components/
-│   │   ├── Dashboard/
-│   │   ├── Invoice/
-│   │   ├── Payment/
-│   │   └── Shared UI
-│   ├── image/
-│   ├── App.js
-│   ├── index.js
-│   └── styles/
-├── package.json
-└── README.md
-⚙️ Installation & Setup
-1. Clone the project
-git clone https://github.com/your-username/mint-portal.git
-cd mint-portal
-2. Install dependencies
+## Features
+
+- User authentication — register, login, and session management
+- Project listing with detailed views per project
+- Investment system with payment processing via **Chapa**
+- Admin dashboard to manage users, projects, and transactions
+- Fully responsive design for mobile and desktop
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| Frontend | React, JavaScript, CSS |
+| Backend | Node.js, Express.js, MongoDB |
+| Tools & Integrations | REST API, Chapa, Git & GitHub |
+
+---
+
+## Project Structure
+
+```
+MINT/
+├── backend/
+│   ├── server.js
+│   ├── routes/
+│   ├── models/
+│   └── controllers/
+├── mint-portal/        # frontend
+│   ├── src/
+│   └── public/
+├── README.md
+└── package.json
+```
+
+---
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/MINT.git
+cd MINT
+```
+
+### 2. Set up environment variables
+
+Create a `.env` file inside the `/backend` folder:
+
+```env
+MONGO_URI=your_mongodb_connection_string
+CHAPA_SECRET_KEY=your_chapa_key
+PORT=5000
+```
+
+### 3. Start the backend
+
+```bash
+cd backend
 npm install
-3. Start development server
 npm start
+```
 
-App runs at:
+### 4. Start the frontend
 
-http://localhost:3000
-🧪 Testing
-npm test
-🏗️ Production Build
-npm run build
+```bash
+cd mint-portal
+npm install
+npm start
+```
 
-Optimized output will be generated in /build.
+---
 
-💡 Example Feature Logic
-Invoice Number Generation
-const invoiceNumber = `INV-${tx_ref?.slice(-6).toUpperCase()}`;
-Currency Formatting
-totalAmount.toLocaleString(undefined, {
-  minimumFractionDigits: 2
-});
-🌐 API Integration
+## Usage
 
-The frontend communicates with a backend system for:
+1. Open `http://localhost:3000` in your browser
+2. Create an account or log in to an existing one
+3. Browse available projects and view their details
+4. Invest in a project using the integrated Chapa payment system
+5. Admins can log into the dashboard to manage users and projects
 
-Payments
-Transactions
-Investor data
-Invoice records
+---
 
-Make sure backend server is running before full usage.
+## Contributing
 
-📱 Responsive Design
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-Mint Portal is fully responsive:
+---
 
-Desktop dashboard experience
-Tablet-friendly layout
-Mobile optimized components
-🔐 Security Notes
-Sensitive data should be handled in backend only
-Environment variables should be used for API URLs
-Never expose private keys in frontend
-🚀 Deployment
+## License
 
-Recommended platforms:
-
-Vercel
-Netlify
-Firebase Hosting
-👨‍💻 Developer Notes
-
-This project focuses on:
-
-Clean UI/UX design
-Real-world financial dashboard structure
-Scalable React component architecture
-API-driven frontend logic
-📌 Status
-
-✔ Active development
-✔ Frontend stable
-⚙ Backend integration dependent
+[MIT](LICENSE) © 2025 MINT Project
