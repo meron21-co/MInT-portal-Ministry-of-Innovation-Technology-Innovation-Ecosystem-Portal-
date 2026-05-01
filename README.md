@@ -1,85 +1,158 @@
-                                          MINT Project
-          📌 About the Project
+                     🌿 Mint Portal
+Mint Portal is a modern web-based financial management system built with React. It is designed to handle investor operations, payments, invoices, and transaction tracking in a clean, fast, and responsive dashboard interface.
 
-MINT is a web platform that allows users to explore and invest in projects.
-The system includes a frontend interface for users and an admin dashboard to manage projects and payments.
+The system supports role-based workflows (Investor/Admin) and provides real-time financial insights through a structured UI.
 
-         🚀 Features
+🚀 Key Features
+💼 Investor Dashboard
+View investments and transaction history
 
-User authentication (login / register)
+Track payments in real time
 
-Project listing and details
+View detailed invoice records
 
-Investment system
+Wallet-style balance overview
 
-Online payment integration
+🧾 Invoice System
+Auto-generated invoice numbers (e.g. INV-XXXXXX)
 
-Admin dashboard to manage users and projects
+Clean formatted currency display
 
-Responsive design
+Payment summaries with structured breakdown
 
-    🛠️ Technologies Used
+Download-ready invoice UI
 
-            Frontend:
+💳 Payment & Transactions
+Secure payment tracking from backend
 
-React
+Real-time transaction updates
 
-JavaScript
+Payment status monitoring (success/pending/failed)
 
-CSS
+⭐ Interactive UI Features
+SweetAlert2 notifications for actions
 
-       Backend:
+Icon-based UI (React Icons)
 
-Node.js
+Responsive and mobile-friendly design
 
-Express.js
+Clean modern dashboard layout
 
-MongoDB
+🔐 Role-Based System (if enabled in backend)
+Investor view
 
-Other Tools:
+Admin management view
 
-Git & GitHub
+Conditional rendering based on user role
 
-REST API
+🧠 Tech Stack
+Frontend
 
-Payment integration (Chapa)
+React.js (Create React App)
 
-         📂 Project Structure
-MINT/
- ├── backend/
- ├── mint-portal/ (frontend)
- ├── README.md
- └── package.json
-⚙️ Installation
+JavaScript (ES6+)
 
-Clone the repository
+CSS3 (custom styling)
 
-git clone https://github.com/your-username/MINT.git
+React Icons
 
-Go to the project folder
+SweetAlert2
 
-cd MINT
+Integration
 
-Install dependencies
+REST API (backend connection)
 
-npm install
+JSON-based data handling
 
-Start the backend
-
-cd backend
-npm start
-
-Start the frontend
-
+📁 Project Structure
+mint-portal/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── Dashboard/
+│   │   ├── Invoice/
+│   │   ├── Payment/
+│   │   └── Shared UI
+│   ├── image/
+│   ├── App.js
+│   ├── index.js
+│   └── styles/
+├── package.json
+└── README.md
+⚙️ Installation & Setup
+1. Clone the project
+git clone https://github.com/your-username/mint-portal.git
 cd mint-portal
+2. Install dependencies
+npm install
+3. Start development server
 npm start
-          
-            💻 Usage
+App runs at:
 
-Open the application in your browser
+http://localhost:3000
+🧪 Testing
+npm test
+🏗️ Production Build
+npm run build
+Optimized output will be generated in /build.
 
-Create an account or login
+💡 Example Feature Logic
+Invoice Number Generation
+const invoiceNumber = `INV-${tx_ref?.slice(-6).toUpperCase()}`;
+Currency Formatting
+totalAmount.toLocaleString(undefined, {
+  minimumFractionDigits: 2
+});
+🌐 API Integration
+The frontend communicates with a backend system for:
 
-Browse available projects
+Payments
 
-Invest in a project using the payment system
+Transactions
+
+Investor data
+
+Invoice records
+
+Make sure backend server is running before full usage.
+
+📱 Responsive Design
+Mint Portal is fully responsive:
+
+Desktop dashboard experience
+
+Tablet-friendly layout
+
+Mobile optimized components
+
+🔐 Security Notes
+Sensitive data should be handled in backend only
+
+Environment variables should be used for API URLs
+
+Never expose private keys in frontend
+
+🚀 Deployment
+Recommended platforms:
+
+Vercel
+
+Netlify
+
+Firebase Hosting
+
+👨‍💻 Developer Notes
+This project focuses on:
+
+Clean UI/UX design
+
+Real-world financial dashboard structure
+
+Scalable React component architecture
+
+API-driven frontend logic
+
+📌 Status
+✔ Active development
+✔ Frontend stable
+⚙ Backend integration dependent
