@@ -1,85 +1,50 @@
-                                          MINT Project
-          📌 About the Project
+# 🚀 MINT Project – Innovation Investment Platform
 
-MINT is a web platform that allows users to explore and invest in projects.
-The system includes a frontend interface for users and an admin dashboard to manage projects and payments.
+## 📌 About the Project
+**MINT (Ministry of Innovation and Technology Portal)** is a full-stack web platform that connects **innovators and investors**.  
+It allows users to explore, fund, and manage innovative projects with a secure payment system.
 
-         🚀 Features
+---
 
-User authentication (login / register)
+## ✨ Features
 
-Project listing and details
+### 👤 User Features
+- 🔐 Authentication (Register / Login)
+- 📊 Browse and explore projects
+- 💰 Invest in projects
+- 🧾 Payment receipt (invoice system)
+- ❓ Ask questions on projects
 
-Investment system
+### 🧑‍💼 Inventor Dashboard
+- ➕ Add / edit projects
+- 📁 Upload images & videos
+- 📈 Track funding progress
+- 💬 Answer investor questions
 
-Online payment integration
+### 🛡️ Admin Panel
+- ✅ Approve / reject projects
+- 📋 View all submitted projects
+- ⚙️ Manage system data
 
-Admin dashboard to manage users and projects
+---
 
-Responsive design
+## 🛠️ Tech Stack
 
-    🛠️ Technologies Used
+### Frontend
+- ⚛️ React
+- 🎨 CSS
+- 📦 JavaScript (ES6)
 
-            Frontend:
+### Backend
+- 🟢 Node.js
+- 🚂 Express.js
+- 🍃 MongoDB
 
-React
+### Other Tools
+- 🔗 REST API
+- 💳 Chapa Payment Integration
+- 🐙 Git & GitHub
 
-JavaScript
+---
 
-CSS
-
-       Backend:
-
-Node.js
-
-Express.js
-
-MongoDB
-
-Other Tools:
-
-Git & GitHub
-
-REST API
-
-Payment integration (Chapa)
-
-         📂 Project Structure
-MINT/
- ├── backend/
- ├── mint-portal/ (frontend)
- ├── README.md
- └── package.json
-⚙️ Installation
-
-Clone the repository
-
-git clone https://github.com/your-username/MINT.git
-
-Go to the project folder
-
-cd MINT
-
-Install dependencies
-
-npm install
-
-Start the backend
-
-cd backend
-npm start
-
-Start the frontend
-
-cd mint-portal
-npm start
-          
-            💻 Usage
-
-Open the application in your browser
-
-Create an account or login
-
-Browse available projects
-
-Invest in a project using the payment system
+## 📂 Project Structure
