@@ -829,7 +829,7 @@ body,
   margin-bottom: 1rem;
   font-size: 1.6rem;
   font-weight: 600;
-  color: #1d4ed8;
+  color: #09132dda;
   letter-spacing: 0.3px;
 }
 
@@ -859,7 +859,7 @@ body,
   text-align: left;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1e3a8a;
+  color: #050f21;
   border-bottom: 1px solid #e5e7eb;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -914,7 +914,7 @@ button.delete:hover {
 
 /* EDIT BUTTON */
 button.edit {
-  background: #3b82f6;
+  background: #05132a;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -925,7 +925,7 @@ button.edit {
 }
 
 button.edit:hover {
-  background: #2563eb;
+  background: #030b1e;
   transform: translateY(-1px);
 }
 
@@ -972,7 +972,7 @@ button.edit:hover {
 
 .project-content h3 {
   margin-bottom: 0.5rem;
-  color: #0d6efd;
+  color: #050e1b;
 }
 
 .project-content p {
@@ -1073,7 +1073,7 @@ button.edit:hover {
   background-color: #ffffff; /* white card */
   padding: 20px;
   border-radius: 10px;
-  border-left: 5px solid #4a90e2; /* accent color */
+  border-left: 5px solid #091a2e; /* accent color */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -2502,7 +2502,7 @@ table {
 /* Header */
 .users-table th,
 table th {
-  background: #4a90e2;
+  background: #263646cb;;
   color: #fff;
   padding: 14px;
   text-align: left;
@@ -3042,12 +3042,12 @@ table tr:hover {
 
 /* ---- CSS Variables ---- */
 :root {
-  --gold: #2add42;
-  --gold-light: #FFF3D4;
+  --gold: #259ded;
+  --gold-light: #eeeded;
   --gold-mid: #F5C66A;
-  --ink: #263646;
+  --ink: #263646cb;
   --ink-soft: #4f1fd1;
-  --surface: #FFFDF8;
+  --surface: #FFFFFF;
   --surface-2: #F7F3EA;
   --border: rgba(180, 150, 80, 0.18);
   --teal: #1D9E75;
@@ -3187,8 +3187,8 @@ table tr:hover {
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: var(--ink);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(5, 40, 61, 0.938);
+  /* border-top: 1px solid rgba(255, 255, 255, 0.06); */
   padding: 16px 36px 24px;
   gap: 14px;
 }

@@ -807,8 +807,8 @@ const handleDeleteProject = async (id) => {
           <div className="header-brand">
            
             <div>
-              <div className="header-title">Inventor Studio</div>
-              <div className="header-sub">Welcome back, {currentUser?.name || "Inventor"}</div>
+             
+              <div className="header-title">Welcome back, {currentUser?.name || "Inventor"}</div>
             </div>
           </div>
           <div className="header-actions">
