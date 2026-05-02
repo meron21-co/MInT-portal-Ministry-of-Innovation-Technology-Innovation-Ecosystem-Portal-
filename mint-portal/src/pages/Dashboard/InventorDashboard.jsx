@@ -1,46 +1,221 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./Dashboard.css";
+import Chart from "chart.js/auto";
 
-// ---------- Question Card ----------
+
+// ============================================================
+// UTILS — charts (inlined)
+// ============================================================
+
+function destroyChart(ref) {
+  if (ref.current) { ref.current.destroy(); ref.current = null; }
+}
+
+function initFundingChart(canvas, payments = [0], mode = "monthly") {
+  const labels = mode === "weekly"
+    ? ["Week 1","Week 2","Week 3","Week 4"]
+    : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const data = new Array(labels.length).fill(0);
+
+  (Array.isArray(payments) ? payments : []).forEach((payment) => {
+    if (payment.status !== "success") return;
+
+    const date = new Date(payment.createdAt);
+    if (isNaN(date)) return;
+
+    let index = 0;
+
+    if (mode === "monthly") {
+      index = date.getMonth(); // 0–11
+    } else {
+      const day = date.getDate();
+      index = Math.min(Math.floor((day - 1) / 7), 3); // week 0–3
+    }
+
+    const amount = payment.projects?.reduce((sum, p) => {
+      return sum + Number(p.amount || 0);
+    }, 0) || 0;
+
+    data[index] += amount;
+  });
+
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Funding (ETB)",
+        data,
+        fill: true,
+        backgroundColor: "rgba(232,160,32,0.12)",
+        borderColor: "#E8A020",
+        borderWidth: 2.5,
+        pointBackgroundColor: "#E8A020",
+        pointRadius: 4,
+        tension: 0.4
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#888" } },
+        y: {
+          grid: { color: "rgba(0,0,0,0.05)" },
+          ticks: {
+            callback: (v) => `${(v / 1000).toFixed(0)}k`
+          }
+        }
+      }
+    }
+  });
+}
+
+
+
+
+function initStatusChart(canvas, counts = {}) {
+  const { Approved=0, Pending=0, Rejected=0, Sold=0 } = counts;
+  return new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels:["Approved","Pending","Rejected","Sold"],
+      datasets:[{ data:[Approved,Pending,Rejected,Sold],
+        backgroundColor:["#1D9E75","#E8A020","#E24B4A","#378ADD"], borderWidth:0, hoverOffset:6 }],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:"68%",
+      plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label:(ctx)=>` ${ctx.label}: ${ctx.parsed}` } } },
+    },
+  });
+}
+
+function initBarChart(canvas, projectData = []) {
+  const labels  = projectData.map((p) => p.name.length > 14 ? p.name.slice(0,14)+"…" : p.name);
+  const raised  = projectData.map((p) => p.raised);
+  const targets = projectData.map((p) => p.target);
+  return new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets:[
+        { label:"Raised", data:raised,  backgroundColor:"#E8A020", borderRadius:4, barPercentage:0.5 },
+        { label:"Target", data:targets, backgroundColor:"#B4B2A9", borderRadius:4, barPercentage:0.5 },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ color:"#888", font:{ size:11 } } },
+        y:{ grid:{ color:"rgba(0,0,0,0.05)" },
+            ticks:{ color:"#888", font:{ size:11 }, callback:(v)=>`${(v/1000).toFixed(0)}k` } },
+      },
+    },
+  });
+}
+
+
+// ============================================================
+// UTILS — animations (inlined)
+// ============================================================
+
+function animateCountUp(el) {
+  if (!el) return;
+  const target    = parseFloat(el.dataset.target) || 0;
+  const prefix    = el.dataset.prefix ?? "";
+  const suffix    = el.dataset.suffix ?? "";
+  const duration  = 1200;
+  const steps     = Math.round((duration / 1000) * 60);
+  const increment = target / steps;
+  let current = 0, step = 0;
+  const format = (val) => {
+    if (target >= 1000)           return Math.round(val).toLocaleString();
+    if (Number.isInteger(target)) return Math.round(val).toString();
+    return val.toFixed(1);
+  };
+  const timer = setInterval(() => {
+    step++; current += increment;
+    if (step >= steps) { clearInterval(timer); current = target; }
+    el.textContent = `${prefix}${format(current)}${suffix}`;
+  }, duration / steps);
+}
+
+
+// ============================================================
+// COMPONENT — Approval Criteria
+// ============================================================
+
+function ApprovalCriteria() {
+  const criteriaDetails = [
+    { title:"Problem Statement",  description:"Measurable real-world issue" },
+    { title:"Feasible Solution",  description:"Well-structured approach" },
+    { title:"Budget Realism",     description:"Justified cost estimates" },
+    { title:"Innovativeness",     description:"Novel or creative angle" },
+    { title:"Media Quality",      description:"Clear docs & visuals" },
+    { title:"Category Accuracy",  description:"Correct classification" },
+    { title:"Impact & Value",     description:"Community benefit" },
+    { title:"Scalability",        description:"Maintainable & scalable" },
+    { title:"Compliance",         description:"Legal & ethical standards" },
+    { title:"Description",        description:"Complete methodology & timeline" },
+  ];
+  return (
+    <div className="section-card">
+      <div className="card-header">
+        <div className="card-title">
+          <span className="card-title-dot dot-gold"></span>Approval Checklist
+        </div>
+      </div>
+      <div className="criteria-grid">
+        {criteriaDetails.map((c, i) => (
+          <div key={i} className="criteria-item">
+            <div className="criteria-check">✓</div>
+            <div>
+              <div className="criteria-name">{c.title}</div>
+              <div className="criteria-desc">{c.description}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+// COMPONENT — Question Card
+// ============================================================
+
 function QuestionCard({ question, onAnswerUpdated }) {
-  const [answer, setAnswer] = useState(question.answer?.text || "");
-  const [resolved, setResolved] = useState(question.answer?.resolved || false);
+  const [answer,    setAnswer]    = useState(question.answer?.text      || "");
+  const [resolved,  setResolved]  = useState(question.answer?.resolved  || false);
   const [highlight, setHighlight] = useState(question.answer?.highlight || false);
 
   const handleAnswerSubmit = async (e) => {
     e.preventDefault();
-    const updatedAnswer = { text: answer, resolved, highlight };
-    await onAnswerUpdated(question._id, updatedAnswer);
+    await onAnswerUpdated(question._id, { text:answer, resolved, highlight });
   };
 
   return (
     <div className={`question-card ${highlight ? "highlighted" : ""}`}>
       <p className="question-text">{question.text}</p>
       <form onSubmit={handleAnswerSubmit} className="answer-form">
-        <textarea
-          placeholder="Type your answer..."
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-        />
+        <textarea placeholder="Type your answer..." value={answer}
+          onChange={(e) => setAnswer(e.target.value)} />
         <div className="answer-options">
           <label>
-            <input
-              type="checkbox"
-              checked={resolved}
-              onChange={(e) => setResolved(e.target.checked)}
-            />{" "}
-            Mark as Resolved
+            <input type="checkbox" checked={resolved}
+              onChange={(e) => setResolved(e.target.checked)} /> Mark as Resolved
           </label>
           <label>
-            <input
-              type="checkbox"
-              checked={highlight}
-              onChange={(e) => setHighlight(e.target.checked)}
-            />{" "}
-            Highlight
+            <input type="checkbox" checked={highlight}
+              onChange={(e) => setHighlight(e.target.checked)} /> Highlight
           </label>
         </div>
-        <button type="submit">Save Answer</button>
+        <button type="submit" className="save-answer-btn">Save Answer</button>
       </form>
       {question.answer && (
         <div className="existing-answer">
@@ -54,502 +229,722 @@ function QuestionCard({ question, onAnswerUpdated }) {
 }
 
 
+// ============================================================
+// COMPONENT — Add / Edit Project
+// ============================================================
 
-
-
-
-// ---------- Approval Criteria ----------
-function ApprovalCriteria() {
-  const criteriaDetails = [
-    { title: "Clear Statement of Problem", description: "Identifies a real-world, measurable problem." },
-    { title: "Feasible Solution / Approach", description: "Technically feasible and well-structured." },
-    { title: "Expected Profit & Budget Realism", description: "Realistic expected profit and justified budget." },
-    { title: "Project Description Completeness", description: "Objectives, methodology, timeline, challenges." },
-    { title: "Innovativeness / Uniqueness", description: "Shows creativity or a novel solution." },
-    { title: "Media & Documentation Quality", description: "Relevant images/videos and clear documentation." },
-    { title: "Category Accuracy", description: "Correctly categorized according to predefined options." },
-    { title: "Impact & Social Value", description: "Positive impact on community or environment." },
-    { title: "Sustainability & Scalability", description: "Maintainable and scalable project." },
-    { title: "Compliance & Ethics", description: "Adheres to legal, ethical, and safety standards." },
-  ];
-
-  return (
-    <section className="criteria-section">
-      <div className="criteria-card">
-        <h2>Approval Criteria</h2>
-        <ul className="criteria-list">
-          {criteriaDetails.map((c, i) => (
-            <li key={i}>
-              <strong>{c.title}:</strong> {c.description}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-// ---------- Add / Edit Project ----------
 function AddProject({ project, onProjectSaved, onCancel, currentUser }) {
-  const [title, setTitle] = useState(project?.title || "");
-  const [description, setDescription] = useState(project?.description || "");
-  const [price, setPrice] = useState(project?.price || "");
+  const [title,            setTitle]            = useState(project?.title            || "");
+  const [description,      setDescription]      = useState(project?.description      || "");
+  const [price,            setPrice]            = useState(project?.price            || "");
   const [problemStatement, setProblemStatement] = useState(project?.problemStatement || "");
-  const [expectedProfit, setExpectedProfit] = useState(project?.expectedProfit || "");
-  const [category, setCategory] = useState(project?.category || "Other");
-  const [images, setImages] = useState(project?.images || []);
-  const [videos, setVideos] = useState(project?.videos || []);
-  const [newImages, setNewImages] = useState([]);
-  const [newVideos, setNewVideos] = useState([]);
+  const [expectedProfit,   setExpectedProfit]   = useState(project?.expectedProfit   || "");
+  const [category,         setCategory]         = useState(project?.category         || "Other");
+  const [images,           setImages]           = useState(project?.images           || []);
+  const [videos,           setVideos]           = useState(project?.videos           || []);
+  const [newImages,        setNewImages]        = useState([]);
+  const [newVideos,        setNewVideos]        = useState([]);
 
   const categories = [
-    "Health", "Education", "Agriculture", "Energy", "Finance",
-    "Software Solutions", "Manufacturing", "Transport", "Tourism", "Social", "Other"
+    "Health","Education","Agriculture","Energy","Finance",
+    "Software Solutions","Manufacturing","Transport","Tourism","Social","Other",
   ];
 
   const handleFileChange = (e, type) => {
     const files = Array.from(e.target.files);
-    if (type === "image") setNewImages(prev => [...prev, ...files]);
-    else setNewVideos(prev => [...prev, ...files]);
+    if (type === "image") setNewImages((prev) => [...prev, ...files]);
+    else                  setNewVideos((prev) => [...prev, ...files]);
   };
 
-const removeFile = (index, type, existing = false) => {
-  if (type === "image") {
-    if (existing) {
-      setImages((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      setNewImages((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (index, type, existing = false) => {
+    if (type === "image") {
+      if (existing) setImages((prev)    => prev.filter((_,i) => i !== index));
+      else          setNewImages((prev) => prev.filter((_,i) => i !== index));
     }
-  }
-
-  if (type === "video") {
-    if (existing) {
-      setVideos((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      setNewVideos((prev) => prev.filter((_, i) => i !== index));
+    if (type === "video") {
+      if (existing) setVideos((prev)    => prev.filter((_,i) => i !== index));
+      else          setNewVideos((prev) => prev.filter((_,i) => i !== index));
     }
-  }
-};
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (!currentUser) {
-      alert("User not logged in!");
-      return;
-    }
-
+    if (!currentUser) { alert("User not logged in!"); return; }
     const formData = new FormData();
-
-    if (project?._id) formData.append("_id", project._id);
-
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("price", price);
+    if (project?._id)   formData.append("_id",            project._id);
+    formData.append("title",            title);
+    formData.append("description",      description);
+    formData.append("price",            price);
     formData.append("problemStatement", problemStatement);
-    formData.append("expectedProfit", expectedProfit);
-    formData.append("category", category);
-
-    formData.append("inventorName", currentUser.name || "Unknown");
-    formData.append("inventorEmail", currentUser.email || "Unknown");
-
-    newImages.forEach(file => formData.append("images", file));
-    newVideos.forEach(file => formData.append("videos", file));
-    images.forEach(url => formData.append("existingImages", url));
-    videos.forEach(url => formData.append("existingVideos", url));
-
+    formData.append("expectedProfit",   expectedProfit);
+    formData.append("category",         category);
+    formData.append("inventorName",     currentUser.name  || "Unknown");
+    formData.append("inventorEmail",    currentUser.email || "Unknown");
+    newImages.forEach((file) => formData.append("images", file));
+    newVideos.forEach((file) => formData.append("videos", file));
+    images.forEach((url)    => formData.append("existingImages", url));
+    videos.forEach((url)    => formData.append("existingVideos", url));
     onProjectSaved(formData, project?._id);
   };
 
-  return (
-    <div className="add-project">
-      <h2>{project ? "Edit Project" : "Add New Project"}</h2>
-      <form onSubmit={handleSubmit} className="project-form">
-        <input type="text" placeholder="Project Title" value={title} onChange={e => setTitle(e.target.value)} required />
-        <textarea placeholder="Project Description" value={description} onChange={e => setDescription(e.target.value)} required />
-        <textarea placeholder="Problem Statement" value={problemStatement} onChange={e => setProblemStatement(e.target.value)} required />
-        <input type="number" placeholder="Project Price" value={price} onChange={e => setPrice(e.target.value)} min={0} />
-        <input type="number" placeholder="Expected Profit" value={expectedProfit} onChange={e => setExpectedProfit(e.target.value)} min={0} />
-        <label>Category</label>
-        <select value={category} onChange={e => setCategory(e.target.value)}>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+  const mediaSrc = (url) => url.startsWith("http") ? url : `http://localhost:5000${url}`;
 
-        <label>Upload Images</label>
-        <input type="file" accept="image/*" multiple onChange={e => handleFileChange(e, "image")} />
-        <div className="preview-container">
-          {images.map((url, i) => (
-            <div key={i} className="media-wrapper">
-              <img src={url.startsWith("http") ? url : `http://localhost:5000${url}`} alt="preview" className="preview-img" />
-              <button type="button" onClick={() => removeFile(i, "image", true)}>❌</button>
-            </div>
-          ))}
-          {newImages.map((file, i) => (
-            <div key={i} className="media-wrapper">
-              <img src={URL.createObjectURL(file)} alt="preview" className="preview-img" />
-              <button type="button" onClick={() => removeFile(i, "image")}>❌</button>
-            </div>
-          ))}
+  return (
+    <div className="add-project-panel">
+      <div className="add-project-header">
+        <h2 className="add-project-title">{project ? "✏️ Edit Project" : "➕ New Invention"}</h2>
+        <button className="close-panel-btn" onClick={onCancel}>✕</button>
+      </div>
+      <form onSubmit={handleSubmit} className="project-form">
+
+        <div className="form-group">
+          <label className="form-label">Project Title</label>
+          <input type="text" className="form-input" placeholder="e.g. BioFilter Water Purifier"
+            value={title} onChange={(e) => setTitle(e.target.value)} required />
         </div>
 
-        <label>Upload Videos</label>
-        <input type="file" accept="video/*" multiple onChange={e => handleFileChange(e, "video")} />
-        <div className="preview-container">
-          {videos.map((url, i) => (
-            <div key={i} className="media-wrapper">
-              <video src={url.startsWith("http") ? url : `http://localhost:5000${url}`} controls className="preview-video" />
-              <button type="button" onClick={() => removeFile(i, "video", true)}>❌</button>
-            </div>
-          ))}
-          {newVideos.map((file, i) => (
-            <div key={i} className="media-wrapper">
-              <video src={URL.createObjectURL(file)} controls className="preview-video" />
-              <button type="button" onClick={() => removeFile(i, "video")}>❌</button>
-            </div>
-          ))}
+        <div className="form-group">
+          <label className="form-label">Description</label>
+          <textarea className="form-textarea" placeholder="Describe your invention..."
+            value={description} onChange={(e) => setDescription(e.target.value)} required />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Problem Statement</label>
+          <textarea className="form-textarea" placeholder="What real-world problem does this solve?"
+            value={problemStatement} onChange={(e) => setProblemStatement(e.target.value)} required />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Project Price (ETB)</label>
+            <input type="number" className="form-input" placeholder="0"
+              value={price} onChange={(e) => setPrice(e.target.value)} min={0} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Expected Profit in 3 Months(ETB)</label>
+            <input type="number" className="form-input" placeholder="0"
+              value={expectedProfit} onChange={(e) => setExpectedProfit(e.target.value)} min={0} />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Category</label>
+          <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Images</label>
+          <input type="file" className="form-file" accept="image/*" multiple
+            onChange={(e) => handleFileChange(e,"image")} />
+          <div className="preview-container">
+            {images.map((url,i) => (
+              <div key={`ei-${i}`} className="media-wrapper">
+                <img src={mediaSrc(url)} alt="preview" className="preview-img" />
+                <button type="button" className="remove-media-btn" onClick={() => removeFile(i,"image",true)}>✕</button>
+              </div>
+            ))}
+            {newImages.map((file,i) => (
+              <div key={`ni-${i}`} className="media-wrapper">
+                <img src={URL.createObjectURL(file)} alt="preview" className="preview-img" />
+                <button type="button" className="remove-media-btn" onClick={() => removeFile(i,"image")}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Videos</label>
+          <input type="file" className="form-file" accept="video/*" multiple
+            onChange={(e) => handleFileChange(e,"video")} />
+          <div className="preview-container">
+            {videos.map((url,i) => (
+              <div key={`ev-${i}`} className="media-wrapper">
+                <video src={mediaSrc(url)} controls className="preview-video" />
+                <button type="button" className="remove-media-btn" onClick={() => removeFile(i,"video",true)}>✕</button>
+              </div>
+            ))}
+            {newVideos.map((file,i) => (
+              <div key={`nv-${i}`} className="media-wrapper">
+                <video src={URL.createObjectURL(file)} controls className="preview-video" />
+                <button type="button" className="remove-media-btn" onClick={() => removeFile(i,"video")}>✕</button>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="form-actions">
-          <button type="submit">{project ? "Save Changes" : "Save Project"}</button>
-          <button type="button" onClick={onCancel} className="cancel-btn">Cancel</button>
+          <button type="submit" className="submit-btn">{project ? "Save Changes" : "Save Project"}</button>
+          <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>
         </div>
       </form>
     </div>
   );
 }
 
-// ---------- Inventor Dashboard ----------
-function InventorDashboard({ role = "inventor" }) {
 
-  
-  const token = localStorage.getItem("token");
+// ============================================================
+// COMPONENT — Status Badge
+// ============================================================
 
-
-let currentUser;
-try {
-  const storedUser = localStorage.getItem("user");
-  currentUser = storedUser && storedUser !== "undefined" ? JSON.parse(storedUser) : null;
-} catch (err) {
-  console.error("Failed to parse user:", err);
-  currentUser = null;
+function StatusBadge({ status }) {
+  const map = { Approved:"badge-approved", Pending:"badge-pending", Rejected:"badge-rejected", Sold:"badge-sold" };
+  return <span className={`status-badge ${map[status] || "badge-pending"}`}>{status}</span>;
 }
 
-  const [projects, setProjects] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingProject, setEditingProject] = useState(null);
- 
-  
+
+// ============================================================
+// COMPONENT — Project Card
+// ============================================================
+
+function ProjectCard({ project, role, currentUser, payments, onEdit, onStatusChange,onDelete }) {
+const raised = payments.reduce((total, payment) => {
+  if (payment.status !== "success") return total;
+  if (!Array.isArray(payment.projects)) return total;
+
+  const projectTotal = payment.projects.reduce((sum, proj) => {
+    const pid = proj?.projectId?._id || proj?.projectId;
+
+    if (String(pid) === String(project._id)) {
+      return sum + Number(proj?.amount || 0);
+    }
+    return sum;
+  }, 0);
+
+  return total + projectTotal;
+}, 0);
+
+  const pct = project.price > 0 ? Math.min((raised / project.price) * 100, 100) : 0;
+
+  const categoryIcons = {
+    Health:"🌿", Energy:"⚡", Education:"📚", Agriculture:"🌾",
+    Finance:"💳", "Software Solutions":"💻", Manufacturing:"🏭",
+    Transport:"🚗", Tourism:"✈️", Social:"🤝", Other:"💡",
+  };
+
+  const mediaSrc = (url) => url.startsWith("http") ? url : `http://localhost:5000${url}`;
+
+  return (
+    <article className="project-card">
+      <div className="project-card-top">
+        <div className="project-icon-wrap">
+          <span className="project-icon">{categoryIcons[project.category] || "💡"}</span>
+        </div>
+        <div className="project-card-info">
+          <h3 className="project-title">{project.title}</h3>
+          {project.category && <span className="project-category-badge">{project.category}</span>}
+        </div>
+        <StatusBadge status={project.status} />
+      </div>
+
+      <p className="project-description">{project.description}</p>
+
+      <div className="project-meta-row">
+        <div className="meta-item">
+          <span className="meta-label">Price</span>
+          <span className="meta-value">{Number(project.price).toLocaleString()}ETB</span>
+        </div>
+        <div className="meta-item">
+          <span className="meta-label">Expected Profit in 3 Months</span>
+          <span className="meta-value">{Number(project.expectedProfit).toLocaleString()}ETB</span>
+        </div>
+        <div className="meta-item">
+          <span className="meta-label">Raised</span>
+          <span className="meta-value raised-value">{raised.toLocaleString()} ETB</span>
+        </div>
+      </div>
+
+      <div className="funding-progress">
+        <div className="funding-label">
+          <span>Funding progress</span>
+          <strong>{Math.round(pct)}%</strong>
+        </div>
+        <div className="prog-wrap">
+          <div className="prog-fill" style={{ width:`${pct}%` }} />
+        </div>
+      </div>
+
+      {project.status === "Rejected" && project.rejectionReason && (
+        <div className="rejection-banner">⚠️ Rejection reason: {project.rejectionReason}</div>
+      )}
+
+      {Array.isArray(project.images) && project.images.length > 0 && (
+        <div className="media-gallery">
+          {project.images.map((img,i) => <img key={i} src={mediaSrc(img)} alt="" className="project-image" />)}
+        </div>
+      )}
+
+      {Array.isArray(project.videos) && project.videos.length > 0 && (
+        <div className="media-gallery">
+          {project.videos.map((vid,i) => <video key={i} src={mediaSrc(vid)} controls className="project-video" />)}
+        </div>
+      )}
+
+      <div className="project-card-actions">
+
+          {role === "inventor" &&
+            project.inventorEmail === currentUser?.email &&
+            project.status !== "Approved" && (
+              <>
+                <button className="edit-btn" onClick={() => onEdit(project)}>
+                  ✏️ Edit
+                </button>
+
+                <button
+                  className="delete-btn"
+                  onClick={() => onDelete(project._id)}
+                >
+                  🗑️ Delete
+                </button>
+              </>
+          )}
+
+          {role === "admin" && project.status === "Pending" && (
+            <>
+              <button className="approve-btn" onClick={() => onStatusChange(project._id,"Approved")}>
+                ✅ Approve
+              </button>
+              <button className="reject-btn" onClick={() => onStatusChange(project._id,"Rejected")}>
+                ❌ Reject
+              </button>
+            </>
+          )}
+
+        </div>
+
+    </article>
+  );
+}
+
+
+// ============================================================
+// COMPONENT — Charts Panel
+// ============================================================
+
+function ChartsPanel({ projects, payments, currentUser, role }) {
+  const fundingRef      = useRef(null);
+  const statusRef       = useRef(null);
+  const barRef          = useRef(null);
+  const fundingChartRef = useRef(null);
+  const [activeTab, setActiveTab] = useState("monthly");
+
+  const getProjectRaised = useCallback(
+  (projectId) => {
+    if (!projectId) return 0;
+
+    return payments.reduce((total, payment) => {
+      if (payment.status !== "success") return total;
+      if (!Array.isArray(payment.projects)) return total;
+
+      const projectTotal = payment.projects.reduce((sum, proj) => {
+        const pid = proj?.projectId?._id || proj?.projectId;
+
+        if (String(pid) === String(projectId)) {
+          return sum + Number(proj?.amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      return total + projectTotal;
+    }, 0);
+  },
+  [payments]
+);
+
+  const myProjects = projects.filter((p) =>
+    role === "inventor" ? p.inventorEmail === currentUser?.email : true
+  );
 
   useEffect(() => {
-    if (!currentUser) {
-      alert("Please login first!");
-      window.location.href = "./login";
-      return;
+    if (fundingRef.current) {
+      destroyChart(fundingChartRef);
+    fundingChartRef.current = initFundingChart(
+  fundingRef.current,
+  payments,
+  activeTab
+);
     }
-    fetchProjects();
-  }, []);
+    return () => destroyChart(fundingChartRef);
+ }, [activeTab, payments]);
 
-  const fetchProjects = async () => {
+  useEffect(() => {
+    let statusChart = null;
+    let barChart    = null;
+    if (statusRef.current) {
+      const counts = {
+        Approved: myProjects.filter((p) => p.status === "Approved").length,
+        Pending:  myProjects.filter((p) => p.status === "Pending").length,
+        Rejected: myProjects.filter((p) => p.status === "Rejected").length,
+        Sold:     myProjects.filter((p) => p.status === "Sold").length,
+      };
+      statusChart = initStatusChart(statusRef.current, counts);
+    }
+    if (barRef.current) {
+      const barData = myProjects.map((p) => ({
+        name:   p.title,
+        raised: getProjectRaised(p._id),
+        target: Number(p.price) || 0,
+      }));
+      barChart = initBarChart(barRef.current, barData);
+    }
+    return () => {
+      if (statusChart) statusChart.destroy();
+      if (barChart)    barChart.destroy();
+    };
+  }, [projects, payments, getProjectRaised]);
+
+  return (
+    <>
+      <div className="section-card">
+        <div className="card-header">
+          <div className="card-title">
+            <span className="card-title-dot dot-gold"></span>Funding over time
+          </div>
+          <div className="tab-pills">
+            <button className={`tab-pill ${activeTab==="monthly"?"active":""}`} onClick={() => setActiveTab("monthly")}>Monthly</button>
+            <button className={`tab-pill ${activeTab==="weekly" ?"active":""}`} onClick={() => setActiveTab("weekly")}>Weekly</button>
+          </div>
+        </div>
+        <div className="chart-wrap"><canvas ref={fundingRef} /></div>
+      </div>
+
+      <div className="section-card">
+        <div className="card-header">
+          <div className="card-title">
+            <span className="card-title-dot dot-teal"></span>Project status
+          </div>
+        </div>
+        <div className="chart-legend">
+          <span className="legend-item"><span className="legend-dot" style={{background:"#1D9E75"}}></span>Approved</span>
+          <span className="legend-item"><span className="legend-dot" style={{background:"#E8A020"}}></span>Pending</span>
+          <span className="legend-item"><span className="legend-dot" style={{background:"#E24B4A"}}></span>Rejected</span>
+          <span className="legend-item"><span className="legend-dot" style={{background:"#378ADD"}}></span>Sold</span>
+        </div>
+        <div className="chart-wrap" style={{height:"200px"}}><canvas ref={statusRef} /></div>
+      </div>
+
+      <div className="section-card chart-full">
+        <div className="card-header">
+          <div className="card-title">
+            <span className="card-title-dot dot-purple"></span>Raised vs Target (ETB)
+          </div>
+        </div>
+        <div className="chart-legend">
+          <span className="legend-item"><span className="legend-dot" style={{background:"#E8A020"}}></span>Raised</span>
+          <span className="legend-item"><span className="legend-dot" style={{background:"#B4B2A9"}}></span>Target</span>
+        </div>
+        <div className="chart-wrap" style={{height:"220px"}}><canvas ref={barRef} /></div>
+      </div>
+    </>
+  );
+}
+
+
+// ============================================================
+// MAIN — Inventor Dashboard
+// ============================================================
+
+function InventorDashboard({ role = "inventor" }) {
+  const token = localStorage.getItem("token");
+
+  let currentUser = null;
+  try {
+    const stored = localStorage.getItem("user");
+    if (stored && stored !== "undefined") currentUser = JSON.parse(stored);
+  } catch (err) { console.error("Failed to parse user:", err); }
+
+  const [projects,       setProjects]       = useState([]);
+  const [payments,       setPayments]       = useState([]);
+  const [showAddForm,    setShowAddForm]    = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const metricsRef = useRef([null, null, null, null]);
+
+  const fetchProjects = useCallback(async () => {
     try {
       const res = await fetch("http://localhost:5000/api/projects", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization:`Bearer ${token}`, "Content-Type":"application/json" },
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setProjects(await res.json());
+    } catch (err) { console.error("Error fetching projects:", err); }
+  }, [token]);
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+  const fetchPayments = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/payments", {
+        headers: { Authorization:`Bearer ${token}` },
+      });
+      setPayments((await res.json()) || []);
+    } catch (err) { console.error("Error fetching payments:", err); }
+  }, [token]);
 
-      const data = await res.json();
-      setProjects(data);
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-    }
-  };
+  useEffect(() => {
+    if (!currentUser) { alert("Please login first!"); window.location.href = "./login"; return; }
+    fetchProjects();
+    fetchPayments();
+  }, [fetchProjects, fetchPayments]);
+
+  useEffect(() => {
+    if (projects.length === 0 && payments.length === 0) return;
+    const timer = setTimeout(() => {
+      metricsRef.current.forEach((el) => el && animateCountUp(el));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [projects, payments]);
+
+
+
+ const getProjectRaised = useCallback(
+  (projectId) => {
+    if (!projectId) return 0;
+
+    return payments.reduce((total, payment) => {
+      if (payment.status !== "success") return total;
+      if (!Array.isArray(payment.projects)) return total;
+
+      const projectTotal = payment.projects.reduce((sum, proj) => {
+        const pid = proj?.projectId?._id || proj?.projectId;
+
+        if (String(pid) === String(projectId)) {
+          return sum + Number(proj?.amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      return total + projectTotal;
+    }, 0);
+  },
+  [payments]
+);
 
   const handleProjectSaved = async (formData, projectId) => {
     try {
-      const url = projectId
-        ? `http://localhost:5000/api/projects/${projectId}`
-        : "http://localhost:5000/api/projects";
+      const url    = projectId ? `http://localhost:5000/api/projects/${projectId}` : "http://localhost:5000/api/projects";
       const method = projectId ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const res    = await fetch(url, { method, headers:{ Authorization:`Bearer ${token}` }, body:formData });
       const updated = await res.json();
-      setProjects(prev => projectId ? prev.map(p => (p._id === projectId ? updated : p)) : [...prev, updated]);
+      setProjects((prev) =>
+        projectId ? prev.map((p) => (p._id === projectId ? updated : p)) : [...prev, updated]
+      );
       setShowAddForm(false);
       setEditingProject(null);
-    } catch (err) {
-      console.error("Error saving project:", err);
-    }
+    } catch (err) { console.error("Error saving project:", err); }
   };
 
   const handleProjectStatusChange = async (id, status) => {
-  try {
-    let reason = "";
-    if (status === "Rejected") {
-      reason = prompt("Please enter a rejection reason:"); // 👈 Ask admin for reason
-      if (!reason) return; // cancel if reason empty
-    }
-
-    const res = await fetch(`http://localhost:5000/api/projects/${id}/status`, {
-      method: "PATCH",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` 
-      },
-      body: JSON.stringify({ status, reason }), // ✅ send reason
-    });
-
-    const updated = await res.json();
-
-    setProjects(prev =>
-      prev.map(p => (p._id === id ? updated : p))
-    );
-  } catch (err) {
-    console.error("Error updating status:", err);
-  }
-};
-
-
-  const handleQuestionAdded = async (projectId, question) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/projects/${projectId}/questions`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(question),
+      let reason = "";
+      if (status === "Rejected") {
+        reason = prompt("Please enter a rejection reason:");
+        if (!reason) return;
+      }
+      const res = await fetch(`http://localhost:5000/api/projects/${id}/status`, {
+        method:  "PATCH",
+        headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+        body:    JSON.stringify({ status, reason }),
       });
       const updated = await res.json();
-      setProjects(prev => prev.map(p => (p._id === projectId ? updated : p)));
-    } catch (err) {
-      console.error("Error adding question:", err);
-    }
+      setProjects((prev) => prev.map((p) => (p._id === id ? updated : p)));
+    } catch (err) { console.error("Error updating status:", err); }
   };
 
   const handleAnswerUpdated = async (questionId, answer) => {
     try {
       const res = await fetch(`http://localhost:5000/api/projects/questions/${questionId}/answer`, {
-        method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(answer),
+        method:  "PATCH",
+        headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+        body:    JSON.stringify(answer),
       });
       const updated = await res.json();
-      setProjects(prev => prev.map(p => (p._id === updated._id ? updated : p)));
-    } catch (err) {
-      console.error("Error updating answer:", err);
-    }
+      setProjects((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+    } catch (err) { console.error("Error updating answer:", err); }
   };
 
   const visibleProjects = Array.isArray(projects)
-  ? role === "inventor"
-    ? projects.filter(p => p.inventorEmail === currentUser?.email)
+    ? role === "inventor" ? projects.filter((p) => p.inventorEmail === currentUser?.email)
+    : role === "admin"    ? projects
+    : projects.filter((p) => ["Approved","Sold"].includes(p.status))
+    : [];
 
-    : role === "admin"
-    ? projects
+  const myProjects          = projects.filter((p) => p.inventorEmail === currentUser?.email);
+  const totalRaised         = myProjects.reduce((s,p) => s + getProjectRaised(p._id), 0);
+  const approvedCount       = myProjects.filter((p) => p.status === "Approved").length;
+  const avgFunding          = myProjects.length > 0
+    ? Math.round(myProjects.reduce((s,p) =>
+        s + (p.price > 0 ? Math.min((getProjectRaised(p._id)/p.price)*100, 100) : 0), 0
+      ) / myProjects.length)
+    : 0;
+  const totalExpectedProfit = myProjects.reduce((s,p) => s + (Number(p.expectedProfit)||0), 0);
 
-    : projects.filter(p => ["Approved", "Sold"].includes(p.status))
-  : [];
+const handleDeleteProject = async (id) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this project?");
+  if (!confirmDelete) return;
 
-
-const [payments, setPayments] = useState([]);
-
-const fetchPayments = async () => {
   try {
-    const res = await fetch("http://localhost:5000/api/payments", {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(`http://localhost:5000/api/projects/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
-    const data = await res.json();
-    setPayments(data || []);
+
+    if (!res.ok) throw new Error("Failed to delete project");
+
+    setProjects((prev) => prev.filter((p) => p._id !== id));
+
   } catch (err) {
-    console.error("Error fetching payments:", err);
+    console.error("Delete error:", err);
   }
 };
-
-useEffect(() => {
-  if (token) fetchPayments();
-}, [token]);
-
-
-
-const myProjects = projects.filter(
-  p => p.inventorEmail === currentUser?.email
-);
-
-// ✅ Calculate raised from actual successful payments
-const getProjectRaised = (projectId) => {
-  return payments.reduce((total, payment) => {
-    if (!Array.isArray(payment.projects)) return total;
-    payment.projects.forEach((proj) => {
-      const pid = String(proj.projectId?._id || proj.projectId);
-      if (pid === String(projectId) && payment.status === "success") {
-        total += Number(proj.amount || 0);
-      }
-    });
-    return total;
-  }, 0);
-};
-
-const totalRaisedAllProjects = myProjects.reduce(
-  (sum, p) => sum + getProjectRaised(p._id),
-  0
-);
-
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
-        <h1></h1>
-        {role === "inventor" && <p>Welcome, {currentUser?.name || "Inventor"}! 💡</p>}
+    <div className="inv-dash">
 
+      {/* HEADER */}
+      <header className="inv-header">
+        <div className="header-row">
+          <div className="header-brand">
+           
+            <div>
+              <div className="header-title">Inventor Studio</div>
+              <div className="header-sub">Welcome back, {currentUser?.name || "Inventor"}</div>
+            </div>
+          </div>
+          <div className="header-actions">
+            <span className="header-badge">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
+            {role === "inventor" && (
+              <button className="add-proj-btn"
+                onClick={() => { setEditingProject(null); setShowAddForm((v) => !v); }}>
+                {showAddForm ? "✕ Close" : "➕ New Project"}
+              </button>
+            )}
+          </div>
+        </div>
       </header>
- 
 
-      <ApprovalCriteria />
-     
+      {/* METRICS */}
+      <div className="metrics-row">
+        <div className="metric-card gold">
+          <div className="metric-label">Total Raised</div>
+          <div className="metric-value" ref={(el) => { metricsRef.current[0] = el; }}
+            data-target={totalRaised} data-prefix="" data-suffix=" ETB">0 ETB</div>
+          <div className="metric-sub">from {myProjects.length} projects</div>
+          <div className="metric-accent"></div>
+        </div>
+        <div className="metric-card teal">
+          <div className="metric-label">Projects</div>
+          <div className="metric-value" ref={(el) => { metricsRef.current[1] = el; }}
+            data-target={myProjects.length} data-prefix="" data-suffix="">0</div>
+          <div className="metric-sub">{approvedCount} approved</div>
+          <div className="metric-accent"></div>
+        </div>
+        <div className="metric-card blue">
+          <div className="metric-label">Avg Funding</div>
+          <div className="metric-value" ref={(el) => { metricsRef.current[2] = el; }}
+            data-target={avgFunding} data-prefix="" data-suffix="%">0%</div>
+          <div className="metric-sub">across projects</div>
+          <div className="metric-accent"></div>
+        </div>
+        <div className="metric-card coral">
+          <div className="metric-label">Expected Profit</div>
+          <div className="metric-value" ref={(el) => { metricsRef.current[3] = el; }}
+            data-target={totalExpectedProfit}  data-suffix=" ETB">0 ETB</div>
+          <div className="metric-sub">combined estimate in 3 Months</div>
+          <div className="metric-accent"></div>
+        </div>
+      </div>
 
-      {role === "inventor" && (
-        <div className="add-project-container">
-          <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>
-            ➕ {showAddForm ? "Close Form" : "Add New Project"}
-          </button>
-          {showAddForm && (
-            <AddProject
-              project={editingProject}
-              currentUser={currentUser}
-              onProjectSaved={handleProjectSaved}
-              onCancel={() => { setShowAddForm(false); setEditingProject(null); }}
-            />
-          )}
+      {/* ADD / EDIT OVERLAY */}
+      {showAddForm && (
+        <div className="form-overlay">
+          <AddProject
+            project={editingProject}
+            currentUser={currentUser}
+            onProjectSaved={handleProjectSaved}
+            onCancel={() => { setShowAddForm(false); setEditingProject(null); }}
+          />
         </div>
       )}
 
-      {role === "admin" && (
-        <section className="criteria-section">
-          <h2>Pending Projects</h2>
-          {visibleProjects.filter(p => p.status === "Pending").length === 0
-            ? <p>No pending projects.</p>
-            : <ul>
-                {visibleProjects.filter(p => p.status === "Pending").map(p => (
-                  <li key={p._id}>
-                    {p.title} - Expected Profit: ${p.expectedProfit}
-                    <span className="approval-buttons">
-                      <button onClick={() => handleProjectStatusChange(p._id, "Approved")}>✅ Approve</button>
-                      <button onClick={() => handleProjectStatusChange(p._id, "Rejected")}>❌ Reject</button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-          }
-        </section>
-      )}
+      {/* MAIN BODY */}
+      <div className="dash-body">
 
-      <section className="projects-section">
-        <h2>{role === "admin" ? "All Projects" : "My Projects"}</h2>
-         <div className="raised-summary">
+        {/* LEFT — charts */}
+        <div className="dash-col">
+          <ChartsPanel projects={projects} payments={payments} currentUser={currentUser} role={role} />
+        </div>
 
-  <div className="summary-item">
-    📦 <span>Projects:</span> {myProjects.length}
-  </div>
-
-  <div className="summary-item">
-    💰 <span>Total Raised:</span>{" "}
-    <strong>{totalRaisedAllProjects} ETB</strong>
-  </div>
-</div>
-        {visibleProjects.length === 0
-          ? <p className="empty">No projects yet.</p>
-          : <div className="projects-grid">
-              {visibleProjects.map(project => (
-                <article key={project._id} className="project-card">
-                  <div className="project-content">
-                    <h3>{project.title}</h3>
-                    {project.category && <span className="project-category">{project.category}</span>}
-                    <p>{project.description}</p>
-                    <p><strong>Problem Statement:</strong> {project.problemStatement}</p>
-
-                    <p className="project-price">
-                    Price: ${project.price} | Expected Profit: ${project.expectedProfit}
-                  </p>
-
-               <p className="raised-info">
-                  💰 Raised: <strong>{getProjectRaised(project._id).toLocaleString()} ETB</strong>
-                </p>
-                <div className="progress-bar-bg">
-                  <div
-                    className="progress-bar-fill"
-                    style={{
-                      width: `${Math.min((getProjectRaised(project._id) / project.price) * 100, 100)}%`,
-                    }}
-                  />
+        {/* RIGHT — admin queue + criteria */}
+        <div className="dash-col">
+          {role === "admin" && (
+            <div className="section-card">
+              <div className="card-header">
+                <div className="card-title">
+                  <span className="card-title-dot dot-coral"></span>Pending Approval
                 </div>
-                <p>
-                  {Math.round((getProjectRaised(project._id) / project.price) * 100)}% funded
-                </p>  
-                     <p><strong>Status:</strong>{" "}
-                    <span className={`status-text ${project.status.toLowerCase()}`}>
-                      {project.status}
-                    </span>
-
-                    {project.status === "Rejected" && project.rejectionReason && (
-                      <span className="rejection-reason">
-                        — Reason: {project.rejectionReason}
-                      </span>
-                    )}
-                  </p>
-
-
-                    {/* Images */}
-                    {Array.isArray(project.images) && project.images.length > 0 && (
-                      <div className="media-gallery">
-                        {project.images.map((img, i) => (
-                          <img key={i} src={img.startsWith("http") ? img : `http://localhost:5000${img}`} alt="" className="project-image" />
-                        ))}
+                <span className="pending-count">
+                  {visibleProjects.filter((p) => p.status === "Pending").length}
+                </span>
+              </div>
+              {visibleProjects.filter((p) => p.status === "Pending").length === 0 ? (
+                <p className="empty-state">No pending projects. 🎉</p>
+              ) : (
+                <ul className="pending-list">
+                  {visibleProjects.filter((p) => p.status === "Pending").map((p) => (
+                    <li key={p._id} className="pending-item">
+                      <div>
+                        <div className="pending-title">{p.title}</div>
+                        <div className="pending-profit">Expected: {p.expectedProfit}ETB</div>
                       </div>
-                    )}
-
-                    {/* Videos */}
-                    {Array.isArray(project.videos) && project.videos.length > 0 && (
-                      <div className="media-gallery">
-                        {project.videos.map((vid, i) => (
-                          <video key={i} src={vid.startsWith("http") ? vid : `http://localhost:5000${vid}`} controls className="project-video" />
-                        ))}
+                      <div className="pending-actions">
+                        <button className="approve-btn" onClick={() => handleProjectStatusChange(p._id,"Approved")}>✅ Approve</button>
+                        <button className="reject-btn"  onClick={() => handleProjectStatusChange(p._id,"Rejected")}>❌ Reject</button>
                       </div>
-                    )}
-
-                         {role === "inventor" &&
-                      project.inventorEmail === currentUser?.email && (
-                        <>
-                          {/* ❌ Hide edit button if project is Approved */}
-                          {project.status !== "Approved" && (
-                            <button
-                              className="edit-btn"
-                              onClick={() => {
-                                setEditingProject(project);
-                                setShowAddForm(true);
-                              }}
-                            >
-                              ✏️ Edit Project
-                            </button>
-                          )}
-
-                         
-                         
-                        </>
-                      )}
-                  </div>
-                </article>
-              ))}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-        }
-      </section>
+          )}
+          <ApprovalCriteria />
+        </div>
+
+        {/* PROJECTS GRID */}
+        <div className="projects-section">
+          <div className="section-card">
+            <div className="card-header">
+              <div className="card-title">
+                <span className="card-title-dot dot-purple"></span>
+                {role === "admin" ? "All Projects" : "My Projects"}
+              </div>
+              <span className="project-count">{visibleProjects.length} total</span>
+            </div>
+            {visibleProjects.length === 0 ? (
+              <div className="empty-state-large">
+                <div className="empty-icon">💡</div>
+                <p>No projects yet. Add your first invention!</p>
+              </div>
+            ) : (
+              <div className="projects-grid">
+                {visibleProjects.map((project) => (
+                  <ProjectCard
+                    key={project._id}
+                    project={project}
+                    role={role}
+                    currentUser={currentUser}
+                    payments={payments}
+                    onEdit={(p) => { setEditingProject(p); setShowAddForm(true); }}
+                    onStatusChange={handleProjectStatusChange}
+                     onDelete={handleDeleteProject}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

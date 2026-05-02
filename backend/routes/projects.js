@@ -398,6 +398,46 @@ router.put("/:projectId/approve-request/:investorId", async (req, res) => {
   }
 });
 
+// DELETE project
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid project ID" });
+    }
+
+    const project = await Project.findById(id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // 🔒 Only admin OR owner can delete
+    const user = req.user;
+
+    if (
+      user.role !== "admin" &&
+      project.inventorEmail !== user.email
+    ) {
+      return res.status(403).json({ message: "Not allowed to delete this project" });
+    }
+
+    // ❌ Prevent deleting approved projects (important safety rule)
+    if (project.status === "Approved") {
+      return res.status(403).json({
+        message: "Approved projects cannot be deleted"
+      });
+    }
+
+    await Project.findByIdAndDelete(id);
+
+    res.json({ message: "Project deleted successfully" });
+
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 
 export default router;
