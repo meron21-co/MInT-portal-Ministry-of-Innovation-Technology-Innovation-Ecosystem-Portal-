@@ -874,14 +874,14 @@ if (!questionText) return;
               ))}
             </div>
 
-            <div className="questions">
+            {/* <div className="questions">
               <h3>Questions</h3>
               {selectedProject.questions?.length === 0 && <p>No questions yet.</p>}
               {selectedProject.questions?.map((q) => (
                 <p key={q._id}>Q: {q.text}</p>
               ))}
               <button onClick={() => handleAskQuestion(selectedProject._id)}>Ask Question</button>
-            </div>
+            </div> */}
 
           </div>
         </div>

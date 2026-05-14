@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema(
 
     profile: { type: String, default: "" },
 
-    // ✅ FIXED FIELDS
     nationalId: { type: String, default: "" },
     passportNumber: { type: String, default: "" },
 
@@ -54,11 +53,16 @@ const userSchema = new mongoose.Schema(
     rejectionReason: { type: String, default: "" },
 
     projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
+
+    // ✅ ADD THESE - required for password reset to work
+    resetToken: { type: String, default: undefined },
+    resetTokenExpire: { type: Date, default: undefined },
   },
   { timestamps: true }
 );
 
-// hash password
+// ✅ Hash password ONLY when password is modified
+// (prevents token corruption on save)
 userSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
     const salt = await bcrypt.genSalt(10);
@@ -67,7 +71,7 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// hide password
+// Hide password from responses
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

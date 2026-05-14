@@ -151,6 +151,7 @@ router.post("/register", async (req, res) => {
 });
 
 
+
 // ----------------- Login -----------------
 router.post("/login", async (req, res) => {
   try {
@@ -160,25 +161,24 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
-  
-          const user = await User.findOne({ email });
+    const user = await User.findOne({ email });
 
-          if (!user || !bcrypt.compareSync(password, user.password)) {
-            return res.status(401).json({ message: "Invalid credentials" });
-          }
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
 
-          // ✅ Block if not approved (skip check for admin)
-          if (user.role !== "admin" && user.approvalStatus !== "approved") {
-            return res.status(403).json({
-              message: user.approvalStatus === "rejected"
-                ? `Your account was rejected. Reason: ${user.rejectionReason}`
-                : "Your account is pending admin approval.",
-              approvalStatus: user.approvalStatus
-            });
-          }
+    // Block if not approved (skip check for admin)
+    if (user.role !== "admin" && user.approvalStatus !== "approved") {
+      return res.status(403).json({
+        success: false,
+        message: user.approvalStatus === "rejected"
+          ? `Your account was rejected. Reason: ${user.rejectionReason}`
+          : "Your account is pending admin approval.",
+        approvalStatus: user.approvalStatus
+      });
+    }
 
-          const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-          res.json({ token, user });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
 
     // Safe user object
     const userSafe = {
@@ -186,23 +186,14 @@ router.post("/login", async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-       profile: user.profile, 
+      profile: user.profile,
     };
 
-    res.status(200).json({ success: true, user: userSafe, token, message: "Login successful" });
+    return res.status(200).json({ success: true, user: userSafe, token, message: "Login successful" });
+
   } catch (error) {
     console.error("Error during login:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
-  }
-});
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      user: req.user,
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
 
@@ -292,23 +283,32 @@ router.post("/forgot-password", async (req, res) => {
 router.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
 
-  const user = await User.findOne({
-    resetToken: token,
-    resetTokenExpire: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    return res.status(400).json({ message: "Invalid or expired token" });
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "Token and new password are required" });
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-user.password = hashedPassword;
-  user.resetToken = undefined;
-  user.resetTokenExpire = undefined;
+  try {
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpire: { $gt: new Date() }, // ✅ use new Date() not Date.now()
+    });
 
-  await user.save();
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
 
-  res.json({ message: "Password reset successful" });
+    // Set new password — pre('save') hook will hash it
+    user.password = newPassword;
+    user.resetToken = undefined;
+    user.resetTokenExpire = undefined;
+
+    await user.save();
+
+    return res.json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
 });
 
 export default router;

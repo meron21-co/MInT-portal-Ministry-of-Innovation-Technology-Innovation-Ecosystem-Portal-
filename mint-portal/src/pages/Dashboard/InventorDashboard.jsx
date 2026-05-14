@@ -530,44 +530,54 @@ function ChartsPanel({ projects, payments, currentUser, role }) {
   const fundingChartRef = useRef(null);
   const [activeTab, setActiveTab] = useState("monthly");
 
-  const getProjectRaised = useCallback(
-  (projectId) => {
-    if (!projectId) return 0;
-
-    return payments.reduce((total, payment) => {
-      if (payment.status !== "success") return total;
-      if (!Array.isArray(payment.projects)) return total;
-
-      const projectTotal = payment.projects.reduce((sum, proj) => {
-        const pid = proj?.projectId?._id || proj?.projectId;
-
-        if (String(pid) === String(projectId)) {
-          return sum + Number(proj?.amount || 0);
-        }
-        return sum;
-      }, 0);
-
-      return total + projectTotal;
-    }, 0);
-  },
-  [payments]
-);
-
+  // ✅ Filter to only this user's projects
   const myProjects = projects.filter((p) =>
     role === "inventor" ? p.inventorEmail === currentUser?.email : true
+  );
+
+  // ✅ Get only the IDs of this user's projects
+  const myProjectIds = new Set(myProjects.map((p) => String(p._id)));
+
+  // ✅ Filter payments to only those that contain this user's projects
+  const myPayments = payments.map((payment) => ({
+    ...payment,
+    projects: (payment.projects || []).filter((proj) => {
+      const pid = String(proj?.projectId?._id || proj?.projectId);
+      return myProjectIds.has(pid);
+    }),
+  })).filter((payment) => payment.projects.length > 0);
+
+  const getProjectRaised = useCallback(
+    (projectId) => {
+      if (!projectId) return 0;
+      return myPayments.reduce((total, payment) => {
+        if (payment.status !== "success") return total;
+        if (!Array.isArray(payment.projects)) return total;
+        const projectTotal = payment.projects.reduce((sum, proj) => {
+          const pid = proj?.projectId?._id || proj?.projectId;
+          if (String(pid) === String(projectId)) {
+            return sum + Number(proj?.amount || 0);
+          }
+          return sum;
+        }, 0);
+        return total + projectTotal;
+      }, 0);
+    },
+    [myPayments]
   );
 
   useEffect(() => {
     if (fundingRef.current) {
       destroyChart(fundingChartRef);
-    fundingChartRef.current = initFundingChart(
-  fundingRef.current,
-  payments,
-  activeTab
-);
+      // ✅ Pass myPayments instead of payments
+      fundingChartRef.current = initFundingChart(fundingRef.current, myPayments, activeTab);
     }
     return () => destroyChart(fundingChartRef);
- }, [activeTab, payments]);
+  }, [activeTab, myPayments]);
+
+  
+
+
 
   useEffect(() => {
     let statusChart = null;
